@@ -1,0 +1,710 @@
+openapi: 3.0.1
+info:
+  title: PrImBoard
+  description: >-
+    PrImBoard (Private Image Board) can be best described as an image board for
+    all the picures and videos you have taken. You can invite users to the board
+    and share specific images with them or your family members!
+  version: 1.0.0
+  contact: {}
+servers:
+  - url: 'https://localhost/api/v1'
+  - url: 'http://localhost/api/v1'
+security: []
+tags:
+  - name: media
+    description: Operations about image or video
+  - name: user
+    description: Operations about user
+  - name: usergroup
+    description: Groups various users
+  - name: event
+    description: Groups different medias to a single event
+  - name: tag
+    description: Categorizes content
+paths:
+  /event:
+    post:
+      tags:
+        - event
+      summary: Add Event
+      description: This can only be done by the logged in user.
+      operationId: addEvent
+      requestBody:
+        description: Added Event
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Event'
+        required: true
+      responses:
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        default:
+          description: successful operation
+          content: {}
+      x-codegen-request-body-name: body
+      parameters: []
+  '/event/{id}':
+    get:
+      summary: Get event by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: getEventById
+      responses:
+        '200':
+          description: Got event successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Event not found
+      tags:
+        - event
+    put:
+      summary: Update event by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: updateEventById
+      responses:
+        '200':
+          description: Updated event successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Event not found
+      tags:
+        - event
+    delete:
+      summary: Delete event by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: deleteEevntById
+      responses:
+        '200':
+          description: Deleted event successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Event not found
+      tags:
+        - event
+  /media:
+    post:
+      tags:
+        - media
+      summary: Add Media
+      description: This can only be done by the logged in user.
+      operationId: addMedia
+      requestBody:
+        description: Added Media
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Media'
+        required: true
+      responses:
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        default:
+          description: successful operation
+          content: {}
+      x-codegen-request-body-name: body
+      parameters: []
+  '/media/{id}':
+    get:
+      summary: Get media by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      operationId: getMediaById
+      responses:
+        '200':
+          description: Got media successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Media not found
+      tags:
+        - media
+    put:
+      summary: Update media by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      operationId: updateMediaById
+      responses:
+        '200':
+          description: Updated media successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Media not found
+      tags:
+        - media
+    delete:
+      summary: Delete media by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      operationId: deleteMediaById
+      responses:
+        '200':
+          description: Deleted media successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Media not found
+      tags:
+        - media
+  /user:
+    post:
+      tags:
+        - user
+      summary: Create user
+      description: This can only be done by the logged in user.
+      operationId: createUser
+      requestBody:
+        description: Created user object
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        '409':
+          description: The username does already exist
+          content: {}
+        default:
+          description: successful operation
+          content: {}
+      x-codegen-request-body-name: body
+      parameters: []
+  /user/login:
+    get:
+      tags:
+        - user
+      summary: Logs user into the system
+      operationId: loginUser
+      parameters:
+        - name: username
+          in: query
+          description: The user name for login
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          description: The password for login in clear text
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: successful operation
+          headers:
+            X-Rate-Limit:
+              description: calls per hour allowed by the user
+              schema:
+                type: integer
+                format: int32
+            X-Expires-After:
+              description: date in UTC when token expires
+              schema:
+                type: string
+                format: date-time
+          content:
+            application/json:
+              schema:
+                type: string
+        '400':
+          description: Invalid username/password supplied
+          content: {}
+  /user/logout:
+    get:
+      tags:
+        - user
+      summary: Logs out current logged in user session
+      operationId: logoutUser
+      responses:
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        default:
+          description: successful operation
+          content: {}
+      parameters: []
+  '/user/{username}':
+    get:
+      tags:
+        - user
+      summary: Get user by user name
+      operationId: getUserByUsername
+      parameters:
+        - name: username
+          in: path
+          description: 'The name that needs to be fetched. Use user1 for testing. '
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Got user successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid username supplied
+          content: {}
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        '404':
+          description: User not found
+          content: {}
+    put:
+      tags:
+        - user
+      summary: Updated user
+      description: This can only be done by the logged in user.
+      operationId: updateUser
+      parameters:
+        - name: username
+          in: path
+          description: name that need to be updated
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Updated user object
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      responses:
+        '200':
+          description: Updated user successful
+        '400':
+          description: Invalid user supplied
+          content: {}
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        '404':
+          description: User not found
+          content: {}
+      x-codegen-request-body-name: body
+    delete:
+      tags:
+        - user
+      summary: Delete user
+      description: This can only be done by the logged in user.
+      operationId: deleteUser
+      parameters:
+        - name: username
+          in: path
+          description: The name that needs to be deleted
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted user successful
+        '400':
+          description: Invalid username supplied
+          content: {}
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        '404':
+          description: User not found
+          content: {}
+  /usergroup:
+    post:
+      tags:
+        - usergroup
+      summary: Add UserGroup
+      description: This can only be done by the logged in user.
+      operationId: addUserGroup
+      requestBody:
+        description: Added UserGroup
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/UserGroup'
+        required: true
+      responses:
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        default:
+          description: successful operation
+          content: {}
+      x-codegen-request-body-name: body
+      parameters: []
+  '/usergroup/{id}':
+    get:
+      summary: Get usergroup by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: getUserGroupById
+      responses:
+        '200':
+          description: Got usergroup successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Usergroup not found
+      tags:
+        - usergroup
+    put:
+      summary: Update usergroup by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: updateUserGroupById
+      responses:
+        '200':
+          description: Updated usergroup successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: UserGroup not found
+      tags:
+        - usergroup
+    delete:
+      summary: Delete usergroup by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: deleteUserGroupById
+      responses:
+        '200':
+          description: Deleted usergroup successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: UserGroup not found
+      tags:
+        - usergroup
+  /tag:
+    post:
+      tags:
+        - tag
+      summary: Add Tag
+      description: This can only be done by the logged in user.
+      operationId: addTag
+      requestBody:
+        description: Added Tag
+        content:
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Tag'
+        required: true
+      responses:
+        '401':
+          description: Authentication information is missing or invalid
+          headers:
+            WWW_Authenticate:
+              schema:
+                type: string
+          content: {}
+        default:
+          description: successful operation
+          content: {}
+      x-codegen-request-body-name: body
+      parameters: []
+  '/tag/{id}':
+    get:
+      summary: Get tag by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: getTagById
+      responses:
+        '200':
+          description: Got tag successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Tag not found
+      tags:
+        - tag
+    put:
+      summary: Update tag by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      operationId: updateTagBayId
+      responses:
+        '200':
+          description: Updated tag successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Tag not found
+      tags:
+        - tag
+    delete:
+      summary: Delete Tag by id
+      description: ''
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      operationId: deleteTagById
+      responses:
+        '200':
+          description: Deleted tag successful
+        '400':
+          description: Invalid id specified
+        '401':
+          description: Authentication information is missing or invalid
+        '404':
+          description: Tag not found
+      tags:
+        - tag
+components:
+  schemas:
+    Media:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        creator:
+          type: string
+        tags:
+          type: array
+          items:
+            type: integer
+        events:
+          type: array
+          items: 
+            type: integer
+            format: int64
+        groups:
+          type: array
+          items:
+            type: integer
+            format: int64
+        timestamp:
+          type: integer
+          format: int64
+        timestamp_upload:
+          type: integer
+          format: int64
+        url:
+          type: string
+        url_thumb:
+          type: string
+        type:
+          type: string
+        format:
+          type: string
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+    UserGroup:
+      type: object
+      properties:
+        _id:
+          type: integer
+        title:
+          type: string
+        creator:
+          type: string
+        timestamp_creation:
+          type: integer
+          format: int64
+        users:
+          type: array
+          items:
+            type: string
+    Event:
+      type: object
+      properties:
+        _id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        creator:
+          type: string
+        groups:
+          type: array
+          items:
+            type: integer
+        timestamp_creation:
+          type: integer
+          format: int64
+        timestamp_start:
+          type: integer
+          format: int64
+        timestamp_end:
+          type: integer
+          format: int64
+        url:
+          type: string
+        url_thumb:
+          type: string
+    Comment:
+      type: object
+      properties:
+        timestamp:
+          type: integer
+          format: int64
+        username:
+          type: string
+        comment:
+          type: string
+    Tag:
+      type: object
+      properties:
+        _id:
+          type: integer
+        name:
+          type: string
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+      content: {}
+  securitySchemes: {}
+  links: {}
+  callbacks: {}

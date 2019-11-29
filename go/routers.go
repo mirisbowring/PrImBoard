@@ -111,6 +111,34 @@ var routes = Routes{
 	},
 
 	Route{
+		"AddTag",
+		strings.ToUpper("Post"),
+		"/api/v1/tag",
+		AddTag,
+	},
+
+	Route{
+		"DeleteTagById",
+		strings.ToUpper("Delete"),
+		"/api/v1/tag/{id}",
+		DeleteTagById,
+	},
+
+	Route{
+		"GetTagById",
+		strings.ToUpper("Get"),
+		"/api/v1/tag/{id}",
+		GetTagById,
+	},
+
+	Route{
+		"UpdateTagBayId",
+		strings.ToUpper("Put"),
+		"/api/v1/tag/{id}",
+		UpdateTagBayId,
+	},
+
+	Route{
 		"CreateUser",
 		strings.ToUpper("Post"),
 		"/api/v1/user",
@@ -125,10 +153,10 @@ var routes = Routes{
 	},
 
 	Route{
-		"GetUserByName",
+		"GetUserByUsername",
 		strings.ToUpper("Get"),
 		"/api/v1/user/{username}",
-		GetUserByName,
+		GetUserByUsername,
 	},
 
 	Route{

@@ -16,11 +16,7 @@ type User struct {
 
 	LastName string `json:"lastName,omitempty"`
 
-	Email string `json:"email,omitempty"`
-
 	Password string `json:"password,omitempty"`
 
 	Role string `json:"role,omitempty"`
-
-	Groups []MediaGroups `json:"groups,omitempty"`
 }

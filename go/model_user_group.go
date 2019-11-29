@@ -10,7 +10,7 @@ package swagger
 
 type UserGroup struct {
 
-	Id int64 `json:"id,omitempty"`
+	Id int32 `json:"_id,omitempty"`
 
 	Title string `json:"title,omitempty"`
 
@@ -19,6 +19,4 @@ type UserGroup struct {
 	TimestampCreation int64 `json:"timestamp_creation,omitempty"`
 
 	Users []string `json:"users,omitempty"`
-
-	Events []UserGroupEvents `json:"events,omitempty"`
 }

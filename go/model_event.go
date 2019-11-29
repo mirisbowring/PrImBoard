@@ -10,7 +10,7 @@ package swagger
 
 type Event struct {
 
-	Id string `json:"id,omitempty"`
+	Id int32 `json:"_id,omitempty"`
 
 	Title string `json:"title,omitempty"`
 
@@ -20,9 +20,7 @@ type Event struct {
 
 	Creator string `json:"creator,omitempty"`
 
-	Groups []MediaGroups `json:"groups,omitempty"`
-
-	Media []EventMedia `json:"media,omitempty"`
+	Groups []int32 `json:"groups,omitempty"`
 
 	TimestampCreation int64 `json:"timestamp_creation,omitempty"`
 

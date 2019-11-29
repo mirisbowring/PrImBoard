@@ -8,11 +8,9 @@
  */
 package swagger
 
-type Comment struct {
+type Tag struct {
 
-	Timestamp int64 `json:"timestamp,omitempty"`
+	Id int32 `json:"_id,omitempty"`
 
-	Username string `json:"username,omitempty"`
-
-	Comment string `json:"comment,omitempty"`
+	Name string `json:"name,omitempty"`
 }

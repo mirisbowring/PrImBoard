@@ -10,7 +10,7 @@ package swagger
 
 type Media struct {
 
-	Id string `json:"id,omitempty"`
+	Id string `json:"_id,omitempty"`
 
 	Title string `json:"title,omitempty"`
 
@@ -20,9 +20,11 @@ type Media struct {
 
 	Creator string `json:"creator,omitempty"`
 
-	Tags []string `json:"tags,omitempty"`
+	Tags []int32 `json:"tags,omitempty"`
 
-	Groups []MediaGroups `json:"groups,omitempty"`
+	Events []int64 `json:"events,omitempty"`
+
+	Groups []int64 `json:"groups,omitempty"`
 
 	Timestamp int64 `json:"timestamp,omitempty"`
 
