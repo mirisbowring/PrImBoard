@@ -14,6 +14,9 @@ import (
 	"github.com/gorilla/mux"
 )
 
+/*
+ * Initializes all the available webroutes
+ */
 func (a *App) InitializeRoutes() {
 	a.Router = mux.NewRouter().StrictSlash(true)
 	// index
@@ -47,6 +50,9 @@ func (a *App) InitializeRoutes() {
 	a.Router.HandleFunc("/api/v1/usergroup/{id}", a.UpdateUserGroupById).Methods("PUT")
 }
 
+/*
+ * Index controller
+ */
 func (a *App) Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello World!")
 }
