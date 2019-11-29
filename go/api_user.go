@@ -9,35 +9,119 @@
 package swagger
 
 import (
+	"encoding/json"
 	"net/http"
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func CreateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+/*
+ * Handles the webrequest for user creation
+ */
+func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var u User
+	// decode request into User model
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&u); err != nil {
+		// an decode error occured
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
+	// username and password are mandatory
+	if u.Username == "" || u.Password == "" {
+		respondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
+		return
+	}
+	// try to insert user into db
+	result, err := u.CreateUser(a.DB)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// creation successful
+	respondWithJSON(w, http.StatusCreated, result)
 }
 
-func DeleteUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+/*
+ * Handles the webrequest for user deletion
+ */
+func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)
+ 	// create user model by passed username
+	u := User{Username: vars["username"]}
+	// try to delete user
+	result, err := u.DeleteUser(a.DB)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// deletion successful
+	respondWithJSON(w, http.StatusOK, result)
 }
 
-func GetUserByUsername(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+/*
+ * Handles the webrequest for receiving user model by username
+ */
+func (a *App) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)
+	// create user model by passed username
+	u := User{Username: vars["username"]}
+	// try to select user
+	if err := u.GetUser(a.DB); err != nil {
+		switch err {
+			case mongo.ErrNoDocuments:
+				// user not found
+				respondWithError(w, http.StatusNotFound, "User not found")
+			default:
+				// another error occured
+				respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	// could select user from mongo
+	respondWithJSON(w, http.StatusOK, u)
 }
 
-func LoginUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+/*
+ * Handles the webrequest for logging the user in
+ */
+func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusNotImplemented, "Login ist currently not supported!")
 }
 
-func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+/*
+ * Handles the webrequest for logging the user out
+ */
+func (a *App) LogoutUser(w http.ResponseWriter, r *http.Request) {
+	respondWithJSON(w, http.StatusNotImplemented, "Login ist currently not supported!")
 }
 
-func UpdateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+/*
+ * Handles the webrequest for updating the user with the passed request body
+ */
+func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)	
+	// store new model in tmp object
+	var uu User
+	decoder := json.NewDecoder(r.Body)
+	if err :=decoder.Decode(&uu); err != nil {
+		// error occured during encoding
+		respondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		return
+	}
+	defer r.Body.Close()
+	// trying to update user with requested body
+	u := User{Username: vars["username"]}
+	result, err := u.UpdateUser(a.DB, uu)
+	if err != nil {
+		// Error occured during update
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Update successful
+	respondWithJSON(w, http.StatusOK, result)
 }
