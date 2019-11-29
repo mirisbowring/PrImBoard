@@ -8,33 +8,69 @@
  */
 package swagger
 
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2/bson"
+)
+
 type Media struct {
+	Id primitive.ObjectID `json:_id,omitempty" bson:"_id,omitempty"`
+	Sha1 string `json:"sha1,omitempty" bson:"sha1,omitempty"`
+	Title string `json:"title,omitempty" bson:"title,omitempty"`
+	Description string `json:"description,omitempty" bson:"description,omitempty"`
+	Comments []*Comment `json:"comments,omitempty" bson:"comments,omitempty"`
+	Creator string `json:"creator,omitempty" bson:"creator,omitempty"`
+	Tags []int32 `json:"tags,omitempty" bson:"tags,omitempty"`
+	Events []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
+	Groups []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
+	Timestamp int64 `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
+	TimestampUpload int64 `json:"timestamp_upload,omitempty" bson:"timestamp_upload,omitempty"`
+	Url string `json:"url,omitempty" bson:"url,omitempty"`
+	UrlThumb string `json:"url_thumb,omitempty" bson:"url_thumb,omitempty"`
+	Type_ string `json:"type,omitempty" bson:"type,omitempty"`
+	Format string `json:"format,omitempty" bson:"format,omitempty"`
+}
 
-	Id string `json:"_id,omitempty"`
+// name of the mongo collection
+var mediaColName = "media"
 
-	Title string `json:"title,omitempty"`
+/*
+ * Creates the model in the mongodb
+ */
+ func (m *Media) AddMedia(db *mongo.Database) (*mongo.InsertOneResult, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	result, err := col.InsertOne(ctx, m)
+	return result, err
+}
 
-	Description string `json:"description,omitempty"`
+/*
+ * Deletes the model from the mongodb
+ */
+ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.Id}
+	result, err := col.DeleteOne(ctx, filter)
+	return result, err
+}
 
-	Comments []*Comment `json:"comments,omitempty"`
+/*
+ * Returns the specified entry from the mongodb
+ */
+func (m *Media) GetMedia(db *mongo.Database) error {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.Id}
+	err := col.FindOne(ctx, filter).Decode(&m)
+	return err
+}
 
-	Creator string `json:"creator,omitempty"`
-
-	Tags []int32 `json:"tags,omitempty"`
-
-	Events []int64 `json:"events,omitempty"`
-
-	Groups []int64 `json:"groups,omitempty"`
-
-	Timestamp int64 `json:"timestamp,omitempty"`
-
-	TimestampUpload int64 `json:"timestamp_upload,omitempty"`
-
-	Url string `json:"url,omitempty"`
-
-	UrlThumb string `json:"url_thumb,omitempty"`
-
-	Type_ string `json:"type,omitempty"`
-
-	Format string `json:"format,omitempty"`
+/*
+ * Updates the record with the passed one
+ */
+func (m *Media) UpdateMedia(db *mongo.Database, um Media) (*mongo.UpdateResult, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.Id}
+	update := bson.M{"$set": um}
+	result, err := col.UpdateOne(ctx, filter, update)
+	return result, err
 }
