@@ -20,7 +20,7 @@ import (
  */
 func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var u User
-	// decode request into User model
+	// decode request into model
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
@@ -33,7 +33,7 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
 		return
 	}
-	// try to insert user into db
+	// try to insert model into db
 	result, err := u.CreateUser(a.DB)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
@@ -49,9 +49,9 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
- 	// create user model by passed username
+ 	// create model by passed username
 	u := User{Username: vars["username"]}
-	// try to delete user
+	// try to delete model
 	result, err := u.DeleteUser(a.DB)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
@@ -67,13 +67,13 @@ func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	// create user model by passed username
+	// create model by passed username
 	u := User{Username: vars["username"]}
-	// try to select user
+	// try to select model
 	if err := u.GetUser(a.DB); err != nil {
 		switch err {
 			case mongo.ErrNoDocuments:
-				// user not found
+				// model not found
 				respondWithError(w, http.StatusNotFound, "User not found")
 			default:
 				// another error occured
@@ -114,7 +114,7 @@ func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	// trying to update user with requested body
+	// trying to update model with requested body
 	u := User{Username: vars["username"]}
 	result, err := u.UpdateUser(a.DB, uu)
 	if err != nil {
