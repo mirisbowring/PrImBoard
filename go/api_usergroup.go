@@ -9,25 +9,112 @@
 package swagger
 
 import (
+	"encoding/json"
 	"net/http"
+	"time"
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
+/*
+ * Handles the webrequest for usergroup creation
+ */
 func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	var ug UserGroup
+	// decode request into model
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&ug); err != nil {
+		// an decode error occured
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
+	// title is mandatory
+	if ug.Title == "" {
+		respondWithError(w, http.StatusBadRequest, "Title cannot be empty")
+		return
+	}
+	// setting creation timestamp
+	ug.TimestampCreation = int64(time.Now().Unix())
+	// try to insert model into db
+	result, err := ug.AddUserGroup(a.DB)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// creation successful
+	respondWithJSON(w, http.StatusCreated, result)
 }
 
+/*
+ * Handles the webrequest for usergroup deletion
+ */
 func (a *App) DeleteUserGroupById(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	// parse request
+	vars := mux.Vars(r)
+	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+ 	// create model by passed id
+	ug := UserGroup{Id: id}
+	// try to delete model
+	result, err := ug.DeleteUserGroup(a.DB)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// deletion successful
+	respondWithJSON(w, http.StatusOK, result)
 }
 
+/*
+ * Handles the webrequest for receiving usergroup model by id
+ */
 func (a *App) GetUserGroupById(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	// parse request
+	vars := mux.Vars(r)
+	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	// create model by passed id
+	u := UserGroup{Id: id}
+	// try to select user
+	if err := ug.GetUserGroup(a.DB); err != nil {
+		switch err {
+			case mongo.ErrNoDocuments:
+				// model not found
+				respondWithError(w, http.StatusNotFound, "Usergroup not found")
+			default:
+				// another error occured
+				respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	// could select user from mongo
+	respondWithJSON(w, http.StatusOK, u)
 }
 
+/*
+ * Handles the webrequest for updating the usergroup with the passed request body
+ */
 func (a *App) UpdateUserGroupById(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusOK)
+	// parse request
+	vars := mux.Vars(r)
+	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	// store new model in tmp object
+	var uug UserGroup
+	decoder := json.NewDecoder(r.Body)
+	if err :=decoder.Decode(&uug); err != nil {
+		// error occured during encoding
+		respondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		return
+	}
+	defer r.Body.Close()
+	// trying to update model with requested body
+	ug := UserGroup{Id: id}
+	result, err := ug.UpdateUserGroup(a.DB, uu)
+	if err != nil {
+		// Error occured during update
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Update successful
+	respondWithJSON(w, http.StatusOK, result)
 }
