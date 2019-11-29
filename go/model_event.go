@@ -8,27 +8,65 @@
  */
 package swagger
 
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2/bson"
+)
+
 type Event struct {
+	Id primitive.ObjectID `json:"_id" bson:"_id"`
+	Title string `json:"title,omitempty" bson:"title,omitempty"`
+	Description string `json:"description,omitempty" bson:"description,omitempty"`
+	Comments []*Comment `json:"comments,omitempty" bson:"comments,omitempty"`
+	Creator string `json:"creator,omitempty" bson:"creator,omitempty"`
+	Groups []int32 `json:"groups,omitempty" bson:"groups,omitempty"`
+	TimestampCreation int64 `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
+	TimestampStart int64 `json:"timestamp_start,omitempty" bson:"timestamp_start,omitempty"`
+	TimestampEnd int64 `json:"timestamp_end,omitempty" bson:"timestamp_end,omitempty"`
+	Url string `json:"url,omitempty" bson:"url,omitempty"`
+	UrlThumb string `json:"url_thumb,omitempty" bson:"url_thumb,omitempty"`
+}
 
-	Id int32 `json:"_id,omitempty"`
+// name of the mongo collection
+var eventColName = "event"
 
-	Title string `json:"title,omitempty"`
+/*
+ * Creates the model in the mongodb
+ */
+func (e *Event) AddEvent(db *mongo.Database) (*mongo.InsertOneResult, error) {
+	col, ctx := GetColCtx(eventColName, db, 30)
+	result, err := col.InsertOne(ctx, e)
+	return result, err
+}
 
-	Description string `json:"description,omitempty"`
+/*
+ * Deletes the model from the mongodb
+ */
+ func (e *Event) DeleteEvent(db *mongo.Database) (*mongo.DeleteResult, error) {
+	col, ctx := GetColCtx(eventColName, db, 30)
+	filter := bson.M{"_id": e.Id}
+	result, err := col.DeleteOne(ctx, filter)
+	return result, err
+}
 
-	Comments []*Comment `json:"comments,omitempty"`
+/*
+ * Returns the specified entry from the mongodb
+ */
+func (e *Event) GetEvent(db *mongo.Database) error {
+	col, ctx := GetColCtx(eventColName, db, 30)
+	filter := bson.M{"_id": e.Id}
+	err := col.FindOne(ctx, filter).Decode(&e)
+	return err
+}
 
-	Creator string `json:"creator,omitempty"`
-
-	Groups []int32 `json:"groups,omitempty"`
-
-	TimestampCreation int64 `json:"timestamp_creation,omitempty"`
-
-	TimestampStart int64 `json:"timestamp_start,omitempty"`
-
-	TimestampEnd int64 `json:"timestamp_end,omitempty"`
-
-	Url string `json:"url,omitempty"`
-
-	UrlThumb string `json:"url_thumb,omitempty"`
+/*
+ * Updates the record with the passed one
+ */
+func (e *Event) UpdateEvent(db *mongo.Database, ue Event) (*mongo.UpdateResult, error) {
+	col, ctx := GetColCtx(eventColName, db, 30)
+	filter := bson.M{"_id": e.Id}
+	update := bson.M{"$set": ue}
+	result, err := col.UpdateOne(ctx, filter, update)
+	return result, err
 }
