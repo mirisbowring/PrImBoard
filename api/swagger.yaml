@@ -102,7 +102,7 @@ paths:
           required: true
           schema:
             type: integer
-      operationId: deleteEevntById
+      operationId: deleteEvntById
       responses:
         '200':
           description: Deleted event successful
@@ -629,8 +629,6 @@ components:
         lastName:
           type: string
         password:
-          type: string
-        role:
           type: string
     UserGroup:
       type: object
