@@ -8,15 +8,57 @@
  */
 package swagger
 
+import(
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2/bson"
+)
+
 type User struct {
+	Username string `json:"username" bson:"username"`
+	FirstName string `json:"firstName,omitempty" bson:"firstName,omitempty"`
+	LastName string `json:"lastName,omitempty" bson:"lastName,omitempty"`
+	Password string `json:"password,omitempty" bson:"password,omitempty"`
+}
 
-	Username string `json:"username,omitempty"`
+// name of the mongo collection
+var userColName = "user"
 
-	FirstName string `json:"firstName,omitempty"`
+/*
+ * Creates the user model in the mongodb
+ */
+func (u *User) CreateUser(db *mongo.Database) (*mongo.InsertOneResult, error) {
+	col, ctx := GetColCtx(userColName, db, 30)
+	result, err := col.InsertOne(ctx, u)
+	return result, err
+}
 
-	LastName string `json:"lastName,omitempty"`
+/*
+ * Deletes the model from the mongodb
+ */
+func (u *User) DeleteUser(db *mongo.Database) (*mongo.DeleteResult, error) {
+	col, ctx := GetColCtx(userColName, db, 30)
+	filter := bson.M{"username": u.Username}
+	result, err := col.DeleteOne(ctx, filter)
+	return result, err
+}
 
-	Password string `json:"password,omitempty"`
+/*
+ * Returns the specified entry from the mongodb
+ */
+func (u *User) GetUser(db *mongo.Database) error {
+	col, ctx := GetColCtx(userColName, db, 30)
+	filter := bson.M{"username": u.Username}
+	err := col.FindOne(ctx, filter).Decode(&u)
+	return err
+}
 
-	Role string `json:"role,omitempty"`
+/*
+ * Updates the record with the passed one
+ */
+func (u *User) UpdateUser(db *mongo.Database, uu User) (*mongo.UpdateResult, error) {
+	col, ctx := GetColCtx(userColName, db, 30)
+	filter := bson.M{"username": u.Username}
+	update := bson.M{"$set": uu}
+	result, err := col.UpdateOne(ctx, filter, update)
+	return result, err
 }
