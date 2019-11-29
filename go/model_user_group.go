@@ -8,15 +8,59 @@
  */
 package swagger
 
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"gopkg.in/mgo.v2/bson"
+)
+
 type UserGroup struct {
+	Id primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Title string `json:"title,omitempty" bson:"title,omitempty"`
+	Creator string `json:"creator,omitempty" bson:"creator,omitempty"`
+	TimestampCreation int64 `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
+	Users []string `json:"users,omitempty" bson:"users,omitempty"`
+}
 
-	Id int32 `json:"_id,omitempty"`
+// name of the mongo collection
+var ugColName = "usergroup"
 
-	Title string `json:"title,omitempty"`
+/*
+ * Creates the model in the mongodb
+ */
+func (ug *UserGroup) CreateUserGroup(db *mongo.Database) (*mongo.InsertOneResult, error) {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	result, err := col.InsertOne(ctx, ug)
+	return result, err
+}
 
-	Creator string `json:"creator,omitempty"`
+/*
+ * Deletes the model from the mongodb
+ */
+ func (ug *UserGroup) DeleteUserGroup(db *mongo.Database) (*mongo.DeleteResult, error) {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	filter := bson.M{"_id": ug.Id}
+	result, err := col.DeleteOne(ctx, filter)
+	return result, err
+}
 
-	TimestampCreation int64 `json:"timestamp_creation,omitempty"`
+/*
+ * Returns the specified entry from the mongodb
+ */
+func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	filter := bson.M{"_id": ug.Id}
+	err := col.FindOne(ctx, filter).Decode(&ug)
+	return err
+}
 
-	Users []string `json:"users,omitempty"`
+/*
+ * Updates the record with the passed one
+ */
+func (ug *UserGroup) UpdateUserGroup(db *mongo.Database, uug UserGroup) (*mongo.UpdateResult, error) {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	filter := bson.M{"_id": ug.Id}
+	update := bson.M{"$set": uug}
+	result, err := col.UpdateOne(ctx, filter, update)
+	return result, err
 }
