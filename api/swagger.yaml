@@ -579,7 +579,7 @@ components:
     Media:
       type: object
       properties:
-        _id:
+        sha1:
           type: string
         title:
           type: string
