@@ -15,7 +15,7 @@ import (
 )
 
 type UserGroup struct {
-	Id primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Id primitive.ObjectID `json:"_id" bson:"_id"`
 	Title string `json:"title,omitempty" bson:"title,omitempty"`
 	Creator string `json:"creator,omitempty" bson:"creator,omitempty"`
 	TimestampCreation int64 `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
