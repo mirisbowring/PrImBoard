@@ -541,7 +541,7 @@ paths:
           required: true
           schema:
             type: integer
-      operationId: updateTagBayId
+      operationId: updateTagById
       responses:
         '200':
           description: Updated tag successful

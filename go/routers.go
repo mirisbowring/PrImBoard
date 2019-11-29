@@ -35,7 +35,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.HandleFunc("/api/v1/tag", a.AddTag).Methods("POST")
 	a.Router.HandleFunc("/api/v1/tag/{id}", a.DeleteTagById).Methods("POST")
 	a.Router.HandleFunc("/api/v1/tag/{id}", a.GetTagById).Methods("GET")
-	a.Router.HandleFunc("/api/v1/tag/{id}", a.UpdateTagBayId).Methods("PUT")
+	a.Router.HandleFunc("/api/v1/tag/{id}", a.UpdateTagById).Methods("PUT")
 	// user
 	a.Router.HandleFunc("/api/v1/user", a.CreateUser).Methods("POST")
 	a.Router.HandleFunc("/api/v1/user/{username}", a.DeleteUser).Methods("DELETE")
