@@ -11,200 +11,42 @@ package swagger
 import (
 	"fmt"
 	"net/http"
-	"strings"
-
 	"github.com/gorilla/mux"
 )
 
-type Route struct {
-	Name        string
-	Method      string
-	Pattern     string
-	HandlerFunc http.HandlerFunc
+func (a *App) InitializeRoutes() {
+	a.Router = mux.NewRouter().StrictSlash(true)
+	// index
+	a.Router.HandleFunc("/api/v1/", a.Index).Methods("GET")
+	// event
+	a.Router.HandleFunc("/api/v1/event", a.AddEvent).Methods("POST")
+	a.Router.HandleFunc("/api/v1/event/{id}", a.DeleteEventById).Methods("DELETE")
+	a.Router.HandleFunc("/api/v1/event/{id}", a.GetEventById).Methods("GET")
+	a.Router.HandleFunc("/api/v1/event/{id}", a.UpdateEventById).Methods("PUT")
+	// media
+	a.Router.HandleFunc("/api/v1/media", a.AddMedia).Methods("POST")
+	a.Router.HandleFunc("/api/v1/media/{id}", a.DeleteMediaById).Methods("DELETE")
+	a.Router.HandleFunc("/api/v1/media/{id}", a.GetMediaById).Methods("GET")
+	a.Router.HandleFunc("/api/v1/media/{id}", a.UpdateMediaById).Methods("PUT")
+	// tag
+	a.Router.HandleFunc("/api/v1/tag", a.AddTag).Methods("POST")
+	a.Router.HandleFunc("/api/v1/tag/{id}", a.DeleteTagById).Methods("POST")
+	a.Router.HandleFunc("/api/v1/tag/{id}", a.GetTagById).Methods("GET")
+	a.Router.HandleFunc("/api/v1/tag/{id}", a.UpdateTagBayId).Methods("PUT")
+	// user
+	a.Router.HandleFunc("/api/v1/user", a.CreateUser).Methods("POST")
+	a.Router.HandleFunc("/api/v1/user/{username}", a.DeleteUser).Methods("DELETE")
+	a.Router.HandleFunc("/api/v1/user/{username}", a.GetUserByUsername).Methods("GET")
+	a.Router.HandleFunc("/api/v1/login", a.LoginUser).Methods("GET")
+	a.Router.HandleFunc("/api/v1/logout", a.LogoutUser).Methods("GET")
+	a.Router.HandleFunc("/api/v1/user/{username}", a.UpdateUser).Methods("PUT")
+	// usergroup
+	a.Router.HandleFunc("/api/v1/usergroup", a.AddUserGroup).Methods("POST")
+	a.Router.HandleFunc("/api/v1/usergroup/{id}", a.DeleteUserGroupById).Methods("DELETE")
+	a.Router.HandleFunc("/api/v1/usergroup/{id}", a.GetUserGroupById).Methods("GET")
+	a.Router.HandleFunc("/api/v1/usergroup/{id}", a.UpdateUserGroupById).Methods("PUT")
 }
 
-type Routes []Route
-
-func NewRouter() *mux.Router {
-	router := mux.NewRouter().StrictSlash(true)
-	for _, route := range routes {
-		var handler http.Handler
-		handler = route.HandlerFunc
-		handler = Logger(handler, route.Name)
-
-		router.
-			Methods(route.Method).
-			Path(route.Pattern).
-			Name(route.Name).
-			Handler(handler)
-	}
-
-	return router
-}
-
-func Index(w http.ResponseWriter, r *http.Request) {
+func (a *App) Index(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Hello World!")
-}
-
-var routes = Routes{
-	Route{
-		"Index",
-		"GET",
-		"/api/v1/",
-		Index,
-	},
-
-	Route{
-		"AddEvent",
-		strings.ToUpper("Post"),
-		"/api/v1/event",
-		AddEvent,
-	},
-
-	Route{
-		"DeleteEevntById",
-		strings.ToUpper("Delete"),
-		"/api/v1/event/{id}",
-		DeleteEevntById,
-	},
-
-	Route{
-		"GetEventById",
-		strings.ToUpper("Get"),
-		"/api/v1/event/{id}",
-		GetEventById,
-	},
-
-	Route{
-		"UpdateEventById",
-		strings.ToUpper("Put"),
-		"/api/v1/event/{id}",
-		UpdateEventById,
-	},
-
-	Route{
-		"AddMedia",
-		strings.ToUpper("Post"),
-		"/api/v1/media",
-		AddMedia,
-	},
-
-	Route{
-		"DeleteMediaById",
-		strings.ToUpper("Delete"),
-		"/api/v1/media/{id}",
-		DeleteMediaById,
-	},
-
-	Route{
-		"GetMediaById",
-		strings.ToUpper("Get"),
-		"/api/v1/media/{id}",
-		GetMediaById,
-	},
-
-	Route{
-		"UpdateMediaById",
-		strings.ToUpper("Put"),
-		"/api/v1/media/{id}",
-		UpdateMediaById,
-	},
-
-	Route{
-		"AddTag",
-		strings.ToUpper("Post"),
-		"/api/v1/tag",
-		AddTag,
-	},
-
-	Route{
-		"DeleteTagById",
-		strings.ToUpper("Delete"),
-		"/api/v1/tag/{id}",
-		DeleteTagById,
-	},
-
-	Route{
-		"GetTagById",
-		strings.ToUpper("Get"),
-		"/api/v1/tag/{id}",
-		GetTagById,
-	},
-
-	Route{
-		"UpdateTagBayId",
-		strings.ToUpper("Put"),
-		"/api/v1/tag/{id}",
-		UpdateTagBayId,
-	},
-
-	Route{
-		"CreateUser",
-		strings.ToUpper("Post"),
-		"/api/v1/user",
-		CreateUser,
-	},
-
-	Route{
-		"DeleteUser",
-		strings.ToUpper("Delete"),
-		"/api/v1/user/{username}",
-		DeleteUser,
-	},
-
-	Route{
-		"GetUserByUsername",
-		strings.ToUpper("Get"),
-		"/api/v1/user/{username}",
-		GetUserByUsername,
-	},
-
-	Route{
-		"LoginUser",
-		strings.ToUpper("Get"),
-		"/api/v1/user/login",
-		LoginUser,
-	},
-
-	Route{
-		"LogoutUser",
-		strings.ToUpper("Get"),
-		"/api/v1/user/logout",
-		LogoutUser,
-	},
-
-	Route{
-		"UpdateUser",
-		strings.ToUpper("Put"),
-		"/api/v1/user/{username}",
-		UpdateUser,
-	},
-
-	Route{
-		"AddUserGroup",
-		strings.ToUpper("Post"),
-		"/api/v1/usergroup",
-		AddUserGroup,
-	},
-
-	Route{
-		"DeleteUserGroupById",
-		strings.ToUpper("Delete"),
-		"/api/v1/usergroup/{id}",
-		DeleteUserGroupById,
-	},
-
-	Route{
-		"GetUserGroupById",
-		strings.ToUpper("Get"),
-		"/api/v1/usergroup/{id}",
-		GetUserGroupById,
-	},
-
-	Route{
-		"UpdateUserGroupById",
-		strings.ToUpper("Put"),
-		"/api/v1/usergroup/{id}",
-		UpdateUserGroupById,
-	},
 }
