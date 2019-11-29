@@ -16,7 +16,7 @@ type Media struct {
 
 	Description string `json:"description,omitempty"`
 
-	Comments []Comment `json:"comments,omitempty"`
+	Comments []*Comment `json:"comments,omitempty"`
 
 	Creator string `json:"creator,omitempty"`
 
