@@ -28,7 +28,7 @@ var ugColName = "usergroup"
 /*
  * Creates the model in the mongodb
  */
-func (ug *UserGroup) CreateUserGroup(db *mongo.Database) (*mongo.InsertOneResult, error) {
+func (ug *UserGroup) AddUserGroup(db *mongo.Database) (*mongo.InsertOneResult, error) {
 	col, ctx := GetColCtx(ugColName, db, 30)
 	result, err := col.InsertOne(ctx, ug)
 	return result, err

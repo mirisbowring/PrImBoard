@@ -74,7 +74,7 @@ func (a *App) GetUserGroupById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
 	// create model by passed id
-	u := UserGroup{Id: id}
+	ug := UserGroup{Id: id}
 	// try to select user
 	if err := ug.GetUserGroup(a.DB); err != nil {
 		switch err {
@@ -88,7 +88,7 @@ func (a *App) GetUserGroupById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// could select user from mongo
-	respondWithJSON(w, http.StatusOK, u)
+	respondWithJSON(w, http.StatusOK, ug)
 }
 
 /*
@@ -109,7 +109,7 @@ func (a *App) UpdateUserGroupById(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// trying to update model with requested body
 	ug := UserGroup{Id: id}
-	result, err := ug.UpdateUserGroup(a.DB, uu)
+	result, err := ug.UpdateUserGroup(a.DB, uug)
 	if err != nil {
 		// Error occured during update
 		respondWithError(w, http.StatusInternalServerError, err.Error())
