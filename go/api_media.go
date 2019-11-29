@@ -12,22 +12,22 @@ import (
 	"net/http"
 )
 
-func AddMedia(w http.ResponseWriter, r *http.Request) {
+func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteMediaById(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteMediaById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetMediaById(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetMediaById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func UpdateMediaById(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateMediaById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }

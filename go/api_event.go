@@ -12,22 +12,22 @@ import (
 	"net/http"
 )
 
-func AddEvent(w http.ResponseWriter, r *http.Request) {
+func (a *App) AddEvent(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteEevntById(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteEventById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetEventById(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetEventById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func UpdateEventById(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateEventById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }

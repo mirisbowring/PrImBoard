@@ -12,22 +12,22 @@ import (
 	"net/http"
 )
 
-func AddUserGroup(w http.ResponseWriter, r *http.Request) {
+func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteUserGroupById(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteUserGroupById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetUserGroupById(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetUserGroupById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func UpdateUserGroupById(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateUserGroupById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }

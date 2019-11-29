@@ -12,22 +12,22 @@ import (
 	"net/http"
 )
 
-func AddTag(w http.ResponseWriter, r *http.Request) {
+func (a *App) AddTag(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func DeleteTagById(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteTagById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func GetTagById(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetTagById(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
 
-func UpdateTagBayId(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateTagBayId(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 }
