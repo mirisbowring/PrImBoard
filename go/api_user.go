@@ -33,6 +33,8 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 		respondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
 		return
 	}
+	// hash password
+	u.Password = HashPassword(u.Password)
 	// try to insert model into db
 	result, err := u.CreateUser(a.DB)
 	if err != nil {
@@ -89,7 +91,36 @@ func (a *App) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
  * Handles the webrequest for logging the user in
  */
 func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusNotImplemented, "Login ist currently not supported!")
+	var u User
+	// decode request into model
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&u); err != nil {
+		// an decode error occured
+		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
+	// validate that username is not empty to prevent high db load
+	if u.Username == "" {
+		respondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
+		return
+	}
+	// hash passed password and compare	
+	u.Username = HashPassword(u.Password)
+	if err := u.GetUser(a.DB); err != nil {
+		switch err {
+			case mongo.ErrNoDocuments:
+				// model not found
+				respondWithError(w, http.StatusForbidden, "Login Failed!")
+			default:
+				// any other error occured
+				respondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	// assuming that the user was logged in
+	respondWithJSON(w, http.StatusOK, "Login was successful!")
+	
 }
 
 /*
