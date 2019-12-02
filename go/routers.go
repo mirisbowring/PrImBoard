@@ -27,6 +27,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.HandleFunc("/api/v1/event/{id}", a.GetEventById).Methods("GET")
 	a.Router.HandleFunc("/api/v1/event/{id}", a.UpdateEventById).Methods("PUT")
 	// media
+	a.Router.HandleFunc("/api/v1/media", a.GetMedia).Methods("GET")
 	a.Router.HandleFunc("/api/v1/media", a.AddMedia).Methods("POST")
 	a.Router.HandleFunc("/api/v1/media/{id}", a.DeleteMediaById).Methods("DELETE")
 	a.Router.HandleFunc("/api/v1/media/{id}", a.GetMediaById).Methods("GET")
