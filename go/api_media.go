@@ -67,6 +67,18 @@ func (a *App) DeleteMediaById(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
+ * Handles the webrequest for receiving all media
+ */
+func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
+	ms, err := GetAllMedia(a.DB)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	respondWithJSON(w, http.StatusOK, ms)
+}
+
+/*
  * Handles the webrequest for receiving Media model by id
  */
 func (a *App) GetMediaById(w http.ResponseWriter, r *http.Request) {
