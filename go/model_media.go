@@ -55,6 +55,30 @@ var mediaColName = "media"
 }
 
 /*
+ * Selects all Media from the mongodb
+ */
+func GetAllMedia(db *mongo.Database) ([]Media, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	cursor, err := col.Find(ctx, bson.M{}) //find all
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	// iterate over the cursor and create array
+	var ms []Media
+	for cursor.Next(ctx) {
+		var m Media
+		cursor.Decode(&m)
+		ms = append(ms, m)
+	}
+	// report errors if occured
+	if err = cursor.Err(); err != nil {
+		return nil, err
+	}
+	return ms, nil
+}
+
+/*
  * Returns the specified entry from the mongodb
  */
 func (m *Media) GetMedia(db *mongo.Database) error {
