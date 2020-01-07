@@ -11,6 +11,7 @@ package swagger
 import (
 	"fmt"
 	"net/http"
+
 	"github.com/gorilla/mux"
 )
 
@@ -27,11 +28,13 @@ func (a *App) InitializeRoutes() {
 	a.Router.HandleFunc("/api/v1/event/{id}", a.GetEventById).Methods("GET")
 	a.Router.HandleFunc("/api/v1/event/{id}", a.UpdateEventById).Methods("PUT")
 	// media
-	a.Router.HandleFunc("/api/v1/media", a.GetMedia).Methods("GET")
+	a.Router.Handle("/api/v1/media", Authenticate(http.HandlerFunc(a.GetMedia))).Methods("GET")
+	// a.Router.HandleFunc("/api/v1/media", a.GetMedia).Methods("GET")
 	a.Router.HandleFunc("/api/v1/media", a.AddMedia).Methods("POST")
-	a.Router.HandleFunc("/api/v1/media/{id}", a.DeleteMediaById).Methods("DELETE")
-	a.Router.HandleFunc("/api/v1/media/{id}", a.GetMediaById).Methods("GET")
-	a.Router.HandleFunc("/api/v1/media/{id}", a.UpdateMediaById).Methods("PUT")
+	a.Router.HandleFunc("/api/v1/media/{id}", a.DeleteMediaByID).Methods("DELETE")
+	a.Router.HandleFunc("/api/v1/media/{id}", a.GetMediaByID).Methods("GET")
+	a.Router.HandleFunc("/api/v1/media/{id}", a.UpdateMediaByID).Methods("PUT")
+	a.Router.HandleFunc("/api/v1/mediaByHash/{ipfs_id}", a.GetMediaByHash).Methods("GET")
 	// tag
 	a.Router.HandleFunc("/api/v1/tag", a.AddTag).Methods("POST")
 	a.Router.HandleFunc("/api/v1/tag/{id}", a.DeleteTagById).Methods("POST")
@@ -41,8 +44,8 @@ func (a *App) InitializeRoutes() {
 	a.Router.HandleFunc("/api/v1/user", a.CreateUser).Methods("POST")
 	a.Router.HandleFunc("/api/v1/user/{username}", a.DeleteUser).Methods("DELETE")
 	a.Router.HandleFunc("/api/v1/user/{username}", a.GetUserByUsername).Methods("GET")
-	a.Router.HandleFunc("/api/v1/login", a.LoginUser).Methods("GET")
-	a.Router.HandleFunc("/api/v1/logout", a.LogoutUser).Methods("GET")
+	a.Router.HandleFunc("/api/v1/login", a.LoginUser).Methods("POST")
+	a.Router.HandleFunc("/api/v1/logout", a.LogoutUser).Methods("POST")
 	a.Router.HandleFunc("/api/v1/user/{username}", a.UpdateUser).Methods("PUT")
 	// usergroup
 	a.Router.HandleFunc("/api/v1/usergroup", a.AddUserGroup).Methods("POST")
