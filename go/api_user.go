@@ -15,13 +15,13 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	// username and password are mandatory
 	if u.Username == "" || u.Password == "" {
-		respondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
+		RespondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
 		return
 	}
 	// hash password
@@ -29,11 +29,11 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	// try to insert model into db
 	result, err := u.CreateUser(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	respondWithJSON(w, http.StatusCreated, result)
+	RespondWithJSON(w, http.StatusCreated, result)
 }
 
 // DeleteUser handles the webrequest for user deletion
@@ -45,11 +45,11 @@ func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// try to delete model
 	result, err := u.DeleteUser(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	respondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, result)
 }
 
 // GetUserByUsername handles the webrequest for receiving user model by username
@@ -63,15 +63,15 @@ func (a *App) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			respondWithError(w, http.StatusNotFound, "User not found")
+			RespondWithError(w, http.StatusNotFound, "User not found")
 		default:
 			// another error occured
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// could select user from mongo
-	respondWithJSON(w, http.StatusOK, u)
+	RespondWithJSON(w, http.StatusOK, u)
 }
 
 // LoginUser Handles the webrequest for logging the user in
@@ -81,13 +81,13 @@ func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	// validate that username is not empty to prevent high db load
 	if u.Username == "" {
-		respondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
+		RespondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
 		return
 	}
 	// read corresponding user from db
@@ -97,29 +97,29 @@ func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			respondWithError(w, http.StatusForbidden, "Login Failed!")
+			RespondWithError(w, http.StatusForbidden, "Login Failed!")
 		default:
 			// any other error occured
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// hash passed password and compare
 	if err := MatchesBcrypt(u.Password, us.Password); err != nil {
 		// Passwords do not match
-		respondWithError(w, http.StatusForbidden, "Login Failed!")
+		RespondWithError(w, http.StatusForbidden, "Login Failed!")
 		return
 	}
 	// Create new Session and Cookie
 	SetSessionCookie(&w, r, NewSession(u))
 	// assuming that the user was logged in
-	respondWithJSON(w, http.StatusOK, "Login was successful!")
+	RespondWithJSON(w, http.StatusOK, "Login was successful!")
 
 }
 
 // LogoutUser handles the webrequest for logging the user out
 func (a *App) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	respondWithJSON(w, http.StatusNotImplemented, "Login ist currently not supported!")
+	RespondWithJSON(w, http.StatusNotImplemented, "Login ist currently not supported!")
 }
 
 // UpdateUser handles the webrequest for updating the user with the passed request body
@@ -131,7 +131,7 @@ func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&uu); err != nil {
 		// error occured during encoding
-		respondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
 		return
 	}
 	defer r.Body.Close()
@@ -140,9 +140,9 @@ func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	result, err := u.UpdateUser(a.DB, uu)
 	if err != nil {
 		// Error occured during update
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	respondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, result)
 }

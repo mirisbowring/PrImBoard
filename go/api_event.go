@@ -10,11 +10,11 @@ package swagger
 
 import (
 	"encoding/json"
-	"net/http"
-	"time"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"net/http"
+	"time"
 )
 
 /*
@@ -26,13 +26,13 @@ func (a *App) AddEvent(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&e); err != nil {
 		// an decode error occured
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	// title is mandatory
 	if e.Title == "" {
-		respondWithError(w, http.StatusBadRequest, "Title cannot be empty")
+		RespondWithError(w, http.StatusBadRequest, "Title cannot be empty")
 		return
 	}
 	// setting creation timestamp
@@ -40,11 +40,11 @@ func (a *App) AddEvent(w http.ResponseWriter, r *http.Request) {
 	// try to insert model into db
 	result, err := e.AddEvent(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	respondWithJSON(w, http.StatusCreated, result)
+	RespondWithJSON(w, http.StatusCreated, result)
 }
 
 /*
@@ -54,16 +54,16 @@ func (a *App) DeleteEventById(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
- 	// create model by passed id
+	// create model by passed id
 	e := Event{Id: id}
 	// try to delete model
 	result, err := e.DeleteEvent(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	respondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, result)
 }
 
 /*
@@ -78,17 +78,17 @@ func (a *App) GetEventById(w http.ResponseWriter, r *http.Request) {
 	// try to select user
 	if err := e.GetEvent(a.DB); err != nil {
 		switch err {
-			case mongo.ErrNoDocuments:
-				// model not found
-				respondWithError(w, http.StatusNotFound, "Event not found")
-			default:
-				// another error occured
-				respondWithError(w, http.StatusInternalServerError, err.Error())
+		case mongo.ErrNoDocuments:
+			// model not found
+			RespondWithError(w, http.StatusNotFound, "Event not found")
+		default:
+			// another error occured
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// could select user from mongo
-	respondWithJSON(w, http.StatusOK, e)
+	RespondWithJSON(w, http.StatusOK, e)
 }
 
 /*
@@ -101,9 +101,9 @@ func (a *App) UpdateEventById(w http.ResponseWriter, r *http.Request) {
 	// store new model in tmp object
 	var ue Event
 	decoder := json.NewDecoder(r.Body)
-	if err :=decoder.Decode(&ue); err != nil {
+	if err := decoder.Decode(&ue); err != nil {
 		// error occured during encoding
-		respondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
 		return
 	}
 	defer r.Body.Close()
@@ -112,9 +112,9 @@ func (a *App) UpdateEventById(w http.ResponseWriter, r *http.Request) {
 	result, err := e.UpdateEvent(a.DB, ue)
 	if err != nil {
 		// Error occured during update
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	respondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, result)
 }

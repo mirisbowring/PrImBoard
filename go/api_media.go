@@ -18,13 +18,13 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
 		// an decode error occured
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	// url and type are mandatory
 	if m.URL == "" || m.Type == "" {
-		respondWithError(w, http.StatusBadRequest, "Url and type cannot be empty")
+		RespondWithError(w, http.StatusBadRequest, "Url and type cannot be empty")
 		return
 	}
 	// setting creation timestamp
@@ -32,11 +32,11 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	// try to insert model into db
 	result, err := m.AddMedia(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	respondWithJSON(w, http.StatusCreated, result)
+	RespondWithJSON(w, http.StatusCreated, result)
 }
 
 // DeleteMediaByID handles the webrequest for Media deletion
@@ -49,21 +49,21 @@ func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 	// try to delete model
 	result, err := m.DeleteMedia(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	respondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, result)
 }
 
 // GetMedia handles the webrequest for receiving all media
 func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 	ms, err := GetAllMedia(a.DB)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	respondWithJSON(w, http.StatusOK, ms)
+	RespondWithJSON(w, http.StatusOK, ms)
 }
 
 // GetMediaByID handles the webrequest for receiving Media model by id
@@ -78,15 +78,15 @@ func (a *App) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			respondWithError(w, http.StatusNotFound, "Media not found")
+			RespondWithError(w, http.StatusNotFound, "Media not found")
 		default:
 			// another error occured
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// could select media from mongo
-	respondWithJSON(w, http.StatusOK, m)
+	RespondWithJSON(w, http.StatusOK, m)
 }
 
 // GetMediaByHash Handles the webrequest for receiving Media model by ipfs hash
@@ -103,19 +103,19 @@ func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			respondWithError(w, http.StatusNotFound, "Media not found")
+			RespondWithError(w, http.StatusNotFound, "Media not found")
 		default:
 			// another error occured
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	if m.Sha1 != parts[0] {
-		respondWithError(w, http.StatusForbidden, "Invalid ipfs/id combination!")
+		RespondWithError(w, http.StatusForbidden, "Invalid ipfs/id combination!")
 		return
 	}
 	// could select media from mongo
-	respondWithJSON(w, http.StatusOK, m)
+	RespondWithJSON(w, http.StatusOK, m)
 }
 
 // UpdateMediaByID handles the webrequest for updating the Media with the passed
@@ -129,7 +129,7 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&um); err != nil {
 		// error occured during encoding
-		respondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
 		return
 	}
 	defer r.Body.Close()
@@ -138,9 +138,9 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	result, err := m.UpdateMedia(a.DB, um)
 	if err != nil {
 		// Error occured during update
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	respondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, result)
 }

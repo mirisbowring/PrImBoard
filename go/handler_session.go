@@ -17,7 +17,7 @@ func Authenticate(h http.Handler) http.Handler {
 			SetSessionCookie(&w, r, s)
 			h.ServeHTTP(w, r)
 		} else {
-			respondWithError(w, http.StatusUnauthorized, "Your session is invalid")
+			RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
 			return
 		}
 	})
