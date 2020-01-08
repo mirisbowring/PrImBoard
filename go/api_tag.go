@@ -47,12 +47,12 @@ func (a *App) AddTag(w http.ResponseWriter, r *http.Request) {
 /*
  * Handles the webrequest for Tag deletion
  */
-func (a *App) DeleteTagById(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
 	// create model by passed id
-	t := Tag{Id: id}
+	t := Tag{ID: id}
 	// try to delete model
 	result, err := t.DeleteTag(a.DB)
 	if err != nil {
@@ -66,12 +66,12 @@ func (a *App) DeleteTagById(w http.ResponseWriter, r *http.Request) {
 /*
  * Handles the webrequest for receiving Tag model by id
  */
-func (a *App) GetTagById(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
 	// create model by passed id
-	t := Tag{Id: id}
+	t := Tag{ID: id}
 	// try to select user
 	if err := t.GetTag(a.DB); err != nil {
 		switch err {
@@ -91,7 +91,7 @@ func (a *App) GetTagById(w http.ResponseWriter, r *http.Request) {
 /*
  * Handles the webrequest for updating the Tag with the passed request body
  */
-func (a *App) UpdateTagById(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
@@ -105,7 +105,7 @@ func (a *App) UpdateTagById(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	// trying to update model with requested body
-	t := Tag{Id: id}
+	t := Tag{ID: id}
 	result, err := t.UpdateTag(a.DB, ut)
 	if err != nil {
 		// Error occured during update

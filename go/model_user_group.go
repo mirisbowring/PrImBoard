@@ -15,11 +15,11 @@ import (
 )
 
 type UserGroup struct {
-	Id primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	Title string `json:"title,omitempty" bson:"title,omitempty"`
-	Creator string `json:"creator,omitempty" bson:"creator,omitempty"`
-	TimestampCreation int64 `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
-	Users []string `json:"users,omitempty" bson:"users,omitempty"`
+	ID                primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Title             string             `json:"title,omitempty" bson:"title,omitempty"`
+	Creator           string             `json:"creator,omitempty" bson:"creator,omitempty"`
+	TimestampCreation int64              `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
+	Users             []string           `json:"users,omitempty" bson:"users,omitempty"`
 }
 
 // name of the mongo collection
@@ -37,9 +37,9 @@ func (ug *UserGroup) AddUserGroup(db *mongo.Database) (*mongo.InsertOneResult, e
 /*
  * Deletes the model from the mongodb
  */
- func (ug *UserGroup) DeleteUserGroup(db *mongo.Database) (*mongo.DeleteResult, error) {
+func (ug *UserGroup) DeleteUserGroup(db *mongo.Database) (*mongo.DeleteResult, error) {
 	col, ctx := GetColCtx(ugColName, db, 30)
-	filter := bson.M{"_id": ug.Id}
+	filter := bson.M{"_id": ug.ID}
 	result, err := col.DeleteOne(ctx, filter)
 	return result, err
 }
@@ -49,7 +49,7 @@ func (ug *UserGroup) AddUserGroup(db *mongo.Database) (*mongo.InsertOneResult, e
  */
 func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
 	col, ctx := GetColCtx(ugColName, db, 30)
-	filter := bson.M{"_id": ug.Id}
+	filter := bson.M{"_id": ug.ID}
 	err := col.FindOne(ctx, filter).Decode(&ug)
 	return err
 }
@@ -59,7 +59,7 @@ func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
  */
 func (ug *UserGroup) UpdateUserGroup(db *mongo.Database, uug UserGroup) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(ugColName, db, 30)
-	filter := bson.M{"_id": ug.Id}
+	filter := bson.M{"_id": ug.ID}
 	update := bson.M{"$set": uug}
 	result, err := col.UpdateOne(ctx, filter, update)
 	return result, err

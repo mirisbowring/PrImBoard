@@ -50,12 +50,12 @@ func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 /*
  * Handles the webrequest for usergroup deletion
  */
-func (a *App) DeleteUserGroupById(w http.ResponseWriter, r *http.Request) {
+func (a *App) DeleteUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
 	// create model by passed id
-	ug := UserGroup{Id: id}
+	ug := UserGroup{ID: id}
 	// try to delete model
 	result, err := ug.DeleteUserGroup(a.DB)
 	if err != nil {
@@ -69,12 +69,12 @@ func (a *App) DeleteUserGroupById(w http.ResponseWriter, r *http.Request) {
 /*
  * Handles the webrequest for receiving usergroup model by id
  */
-func (a *App) GetUserGroupById(w http.ResponseWriter, r *http.Request) {
+func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
 	// create model by passed id
-	ug := UserGroup{Id: id}
+	ug := UserGroup{ID: id}
 	// try to select user
 	if err := ug.GetUserGroup(a.DB); err != nil {
 		switch err {
@@ -94,7 +94,7 @@ func (a *App) GetUserGroupById(w http.ResponseWriter, r *http.Request) {
 /*
  * Handles the webrequest for updating the usergroup with the passed request body
  */
-func (a *App) UpdateUserGroupById(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["_id"])
@@ -108,7 +108,7 @@ func (a *App) UpdateUserGroupById(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	// trying to update model with requested body
-	ug := UserGroup{Id: id}
+	ug := UserGroup{ID: id}
 	result, err := ug.UpdateUserGroup(a.DB, uug)
 	if err != nil {
 		// Error occured during update

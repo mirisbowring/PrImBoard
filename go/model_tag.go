@@ -15,8 +15,8 @@ import (
 )
 
 type Tag struct {
-	Id primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	Name string `json:"name,omitempty" bson:"name,omitempty"`
+	ID   primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Name string             `json:"name,omitempty" bson:"name,omitempty"`
 }
 
 // name of the mongo collection
@@ -34,9 +34,9 @@ func (t *Tag) AddTag(db *mongo.Database) (*mongo.InsertOneResult, error) {
 /*
  * Deletes the model from the mongodb
  */
- func (t *Tag) DeleteTag(db *mongo.Database) (*mongo.DeleteResult, error) {
+func (t *Tag) DeleteTag(db *mongo.Database) (*mongo.DeleteResult, error) {
 	col, ctx := GetColCtx(tColName, db, 30)
-	filter := bson.M{"_id": t.Id}
+	filter := bson.M{"_id": t.ID}
 	result, err := col.DeleteOne(ctx, filter)
 	return result, err
 }
@@ -46,7 +46,7 @@ func (t *Tag) AddTag(db *mongo.Database) (*mongo.InsertOneResult, error) {
  */
 func (t *Tag) GetTag(db *mongo.Database) error {
 	col, ctx := GetColCtx(tColName, db, 30)
-	filter := bson.M{"_id": t.Id}
+	filter := bson.M{"_id": t.ID}
 	err := col.FindOne(ctx, filter).Decode(&t)
 	return err
 }
@@ -56,7 +56,7 @@ func (t *Tag) GetTag(db *mongo.Database) error {
  */
 func (t *Tag) UpdateTag(db *mongo.Database, ut Tag) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(tColName, db, 30)
-	filter := bson.M{"_id": t.Id}
+	filter := bson.M{"_id": t.ID}
 	update := bson.M{"$set": ut}
 	result, err := col.UpdateOne(ctx, filter, update)
 	return result, err

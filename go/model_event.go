@@ -15,17 +15,17 @@ import (
 )
 
 type Event struct {
-	Id primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
-	Title string `json:"title,omitempty" bson:"title,omitempty"`
-	Description string `json:"description,omitempty" bson:"description,omitempty"`
-	Comments []*Comment `json:"comments,omitempty" bson:"comments,omitempty"`
-	Creator string `json:"creator,omitempty" bson:"creator,omitempty"`
-	Groups []int32 `json:"groups,omitempty" bson:"groups,omitempty"`
-	TimestampCreation int64 `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
-	TimestampStart int64 `json:"timestamp_start,omitempty" bson:"timestamp_start,omitempty"`
-	TimestampEnd int64 `json:"timestamp_end,omitempty" bson:"timestamp_end,omitempty"`
-	Url string `json:"url,omitempty" bson:"url,omitempty"`
-	UrlThumb string `json:"url_thumb,omitempty" bson:"url_thumb,omitempty"`
+	ID                primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	Title             string             `json:"title,omitempty" bson:"title,omitempty"`
+	Description       string             `json:"description,omitempty" bson:"description,omitempty"`
+	Comments          []*Comment         `json:"comments,omitempty" bson:"comments,omitempty"`
+	Creator           string             `json:"creator,omitempty" bson:"creator,omitempty"`
+	Groups            []int32            `json:"groups,omitempty" bson:"groups,omitempty"`
+	TimestampCreation int64              `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
+	TimestampStart    int64              `json:"timestamp_start,omitempty" bson:"timestamp_start,omitempty"`
+	TimestampEnd      int64              `json:"timestamp_end,omitempty" bson:"timestamp_end,omitempty"`
+	Url               string             `json:"url,omitempty" bson:"url,omitempty"`
+	UrlThumb          string             `json:"url_thumb,omitempty" bson:"url_thumb,omitempty"`
 }
 
 // name of the mongo collection
@@ -43,9 +43,9 @@ func (e *Event) AddEvent(db *mongo.Database) (*mongo.InsertOneResult, error) {
 /*
  * Deletes the model from the mongodb
  */
- func (e *Event) DeleteEvent(db *mongo.Database) (*mongo.DeleteResult, error) {
+func (e *Event) DeleteEvent(db *mongo.Database) (*mongo.DeleteResult, error) {
 	col, ctx := GetColCtx(eventColName, db, 30)
-	filter := bson.M{"_id": e.Id}
+	filter := bson.M{"_id": e.ID}
 	result, err := col.DeleteOne(ctx, filter)
 	return result, err
 }
@@ -55,7 +55,7 @@ func (e *Event) AddEvent(db *mongo.Database) (*mongo.InsertOneResult, error) {
  */
 func (e *Event) GetEvent(db *mongo.Database) error {
 	col, ctx := GetColCtx(eventColName, db, 30)
-	filter := bson.M{"_id": e.Id}
+	filter := bson.M{"_id": e.ID}
 	err := col.FindOne(ctx, filter).Decode(&e)
 	return err
 }
@@ -65,7 +65,7 @@ func (e *Event) GetEvent(db *mongo.Database) error {
  */
 func (e *Event) UpdateEvent(db *mongo.Database, ue Event) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(eventColName, db, 30)
-	filter := bson.M{"_id": e.Id}
+	filter := bson.M{"_id": e.ID}
 	update := bson.M{"$set": ue}
 	result, err := col.UpdateOne(ctx, filter, update)
 	return result, err
