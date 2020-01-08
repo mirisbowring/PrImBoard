@@ -24,7 +24,7 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// url and type are mandatory
 	if m.URL == "" || m.Type == "" {
-		RespondWithError(w, http.StatusBadRequest, "Url and type cannot be empty")
+		RespondWithError(w, http.StatusBadRequest, "URL and type cannot be empty")
 		return
 	}
 	// setting creation timestamp

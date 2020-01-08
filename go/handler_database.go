@@ -2,19 +2,17 @@ package swagger
 
 import (
 	"context"
-	"time"
-	"log"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
+	"time"
 )
 
-// database namespace
+// DBName is the database namespace
 var DBName = "primboard"
 
-/*
- * Initializes a mongodb connection
- */
-func (a *App) Connect(){
+// Connect initializes a mongodb connection
+func (a *App) Connect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
@@ -26,10 +24,17 @@ func (a *App) Connect(){
 }
 
 // helpers
-/*
- * Creates a context of specified duration
- */
+
+var cancel context.CancelFunc
+
+// DBContext creates a context of specified duration
 func DBContext(i time.Duration) context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), i*time.Second)
+	var ctx context.Context
+	ctx, cancel = context.WithTimeout(context.Background(), i*time.Second)
 	return ctx
+}
+
+// CloseContext defers the cancel function
+func CloseContext() {
+	defer cancel()
 }

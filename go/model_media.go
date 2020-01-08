@@ -32,6 +32,7 @@ var mediaColName = "media"
 func (m *Media) AddMedia(db *mongo.Database) (*mongo.InsertOneResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	result, err := col.InsertOne(ctx, m)
+	CloseContext()
 	return result, err
 }
 
@@ -40,6 +41,7 @@ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	result, err := col.DeleteOne(ctx, filter)
+	CloseContext()
 	return result, err
 }
 
@@ -62,6 +64,7 @@ func GetAllMedia(db *mongo.Database) ([]Media, error) {
 	if err = cursor.Err(); err != nil {
 		return nil, err
 	}
+	CloseContext()
 	return ms, nil
 }
 
@@ -70,6 +73,7 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	err := col.FindOne(ctx, filter).Decode(&m)
+	CloseContext()
 	return err
 }
 
@@ -79,5 +83,6 @@ func (m *Media) UpdateMedia(db *mongo.Database, um Media) (*mongo.UpdateResult, 
 	filter := bson.M{"_id": m.ID}
 	update := bson.M{"$set": um}
 	result, err := col.UpdateOne(ctx, filter, update)
+	CloseContext()
 	return result, err
 }
