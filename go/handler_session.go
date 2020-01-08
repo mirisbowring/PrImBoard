@@ -1,7 +1,6 @@
 package swagger
 
 import (
-	"log"
 	"net/http"
 )
 
@@ -90,7 +89,6 @@ func ReadSessionCookie(w *http.ResponseWriter, r *http.Request) string {
 	cookie, err := r.Cookie("stoken")
 	if err != nil {
 		// cookie not found or read
-		log.Println("Cookie not found")
 		return ""
 	}
 	return cookie.Value
