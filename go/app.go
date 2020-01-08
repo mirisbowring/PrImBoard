@@ -98,9 +98,7 @@ func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
 
-/*
- * Returns the collection for the specified model on the passed db instance
- */
+// Returns the collection for the specified model on the passed db instance
 func modelCollection(model string, db *mongo.Database) *mongo.Collection {
 	return db.Collection(model)
 }

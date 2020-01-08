@@ -87,11 +87,11 @@ func SetSessionCookie(w *http.ResponseWriter, r *http.Request, session *Session)
 
 // ReadSessionCookie reads the stoken cookie from the request and returns the value
 func ReadSessionCookie(w *http.ResponseWriter, r *http.Request) string {
-	if cookie, err := r.Cookie("stoken"); err != nil {
+	cookie, err := r.Cookie("stoken")
+	if err != nil {
 		// cookie not found or read
 		log.Println("Cookie not found")
 		return ""
-	} else {
-		return cookie.Value
 	}
+	return cookie.Value
 }
