@@ -39,7 +39,7 @@ func CloseSession(w *http.ResponseWriter, r *http.Request) {
 	token := ReadSessionCookie(w, r)
 	Sessions = RemoveToken(Sessions, token)
 	cookie := http.Cookie{
-		Name:   "stoken",
+		Name:   api.Config.CookieTokenTitle,
 		MaxAge: -1,
 	}
 	http.SetCookie(*w, &cookie)
@@ -74,19 +74,20 @@ func GetSession(token string) *Session {
 func SetSessionCookie(w *http.ResponseWriter, r *http.Request, session *Session) {
 	session.RenewToken()
 	cookie := http.Cookie{
-		Name:     "stoken",
+		Name:     api.Config.CookieTokenTitle,
 		Value:    session.Token,
 		Expires:  session.Expire,
-		Path:     "/",
-		Secure:   false,
-		HttpOnly: false,
+		Path:     api.Config.CookiePath,
+		Secure:   api.Config.CookieSecure,
+		HttpOnly: api.Config.CookieHTTPOnly,
+		Domain:   api.Config.Domain,
 	}
 	http.SetCookie(*w, &cookie)
 }
 
 // ReadSessionCookie reads the stoken cookie from the request and returns the value
 func ReadSessionCookie(w *http.ResponseWriter, r *http.Request) string {
-	cookie, err := r.Cookie("stoken")
+	cookie, err := r.Cookie(api.Config.CookieTokenTitle)
 	if err != nil {
 		// cookie not found or read
 		return ""

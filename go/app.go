@@ -3,19 +3,38 @@ package swagger
 import (
 	"context"
 	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
-	"log"
-	"net/http"
-	"time"
 )
+
+var api *App
+var config = "env.json"
 
 // App struct to maintain database connection and router
 type App struct {
 	Router *mux.Router
 	DB     *mongo.Database
+	Config *Config
+}
+
+// Config struct that stores every api related settings
+type Config struct {
+	Domain           string   `json:"domain"`
+	Port             int      `json:"port"`
+	MongoURL         string   `json:"mongo_url"`
+	DBName           string   `json:"database_name"`
+	CookiePath       string   `json:"cookie_path"`
+	CookieHTTPOnly   bool     `json:"cookie_http_only"`
+	CookieSecure     bool     `json:"cookie_secure"`
+	CookieTokenTitle string   `json:"cookie_token_title"`
+	AllowedOrigins   []string `json:"allowed_origins"`
 }
 
 // Run starts the application on the passed address with the inherited router
@@ -42,9 +61,7 @@ func (a *App) Run(addr string) {
 					},
 				),
 				handlers.AllowedOrigins(
-					[]string{
-						"http://localhost:4200",
-					},
+					a.Config.AllowedOrigins,
 				),
 				handlers.AllowCredentials(),
 			)(a.Router)))
@@ -54,8 +71,10 @@ func (a *App) Run(addr string) {
 // - mongodb connection initialization
 // - router initialization
 func (a *App) Initialize() {
+	a.ReadConfig()
 	a.Connect()
 	a.InitializeRoutes()
+	api = a
 }
 
 // helpers
@@ -89,6 +108,21 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+}
+
+// ReadConfig reads all neccessary settings from config file
+func (a *App) ReadConfig() {
+	f, err := os.Open(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	//decode file content into go object
+	decoder := json.NewDecoder(f)
+	err = decoder.Decode(&a.Config)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func enableCors(w *http.ResponseWriter) {

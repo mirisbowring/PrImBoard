@@ -8,19 +8,16 @@ import (
 	"time"
 )
 
-// DBName is the database namespace
-var DBName = "primboard"
-
 // Connect initializes a mongodb connection
 func (a *App) Connect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+	clientOptions := options.Client().ApplyURI(a.Config.MongoURL)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
-	a.DB = client.Database(DBName)
+	a.DB = client.Database(a.Config.DBName)
 }
 
 // helpers
