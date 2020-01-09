@@ -1,4 +1,4 @@
-package swagger
+package primboard
 
 import (
 	"fmt"

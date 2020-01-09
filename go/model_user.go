@@ -1,4 +1,4 @@
-package swagger
+package primboard
 
 import (
 	"go.mongodb.org/mongo-driver/mongo"

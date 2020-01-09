@@ -1,4 +1,4 @@
-package swagger
+package primboard
 
 // Comment type that is beeing referenced by multiple other types
 type Comment struct {
