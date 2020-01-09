@@ -119,7 +119,8 @@ func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
 
 // LogoutUser handles the webrequest for logging the user out
 func (a *App) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	RespondWithJSON(w, http.StatusNotImplemented, "Login ist currently not supported!")
+	CloseSession(&w, r)
+	RespondWithJSON(w, http.StatusNoContent, "Logout was successfull!")
 }
 
 // UpdateUser handles the webrequest for updating the user with the passed request body
