@@ -41,6 +41,29 @@ func (e *Event) DeleteEvent(db *mongo.Database) (*mongo.DeleteResult, error) {
 	return result, err
 }
 
+// GetAllEvents selects all Events from the mongodb
+func GetAllEvents(db *mongo.Database) ([]Event, error) {
+	col, ctx := GetColCtx(eventColName, db, 30)
+	cursor, err := col.Find(ctx, bson.M{}) // find all
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	// iterate over the cursor and create array
+	var es []Event
+	for cursor.Next(ctx) {
+		var e Event
+		cursor.Decode(&e)
+		es = append(es, e)
+	}
+	// report errors if occured
+	if err = cursor.Err(); err != nil {
+		return nil, err
+	}
+	CloseContext()
+	return es, nil
+}
+
 // GetEvent returns the specified entry from the mongodb
 func (e *Event) GetEvent(db *mongo.Database) error {
 	col, ctx := GetColCtx(eventColName, db, 30)

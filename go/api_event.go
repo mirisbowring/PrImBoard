@@ -54,6 +54,16 @@ func (a *App) DeleteEventByID(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, result)
 }
 
+// GetEvents handles the webrequest for receiving all events
+func (a *App) GetEvents(w http.ResponseWriter, r *http.Request) {
+	es, err := GetAllEvents(a.DB)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, es)
+}
+
 // GetEventByID handles the webrequest for receiving Event model by id
 func (a *App) GetEventByID(w http.ResponseWriter, r *http.Request) {
 	// parse request

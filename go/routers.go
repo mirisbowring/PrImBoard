@@ -17,6 +17,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/event/{id}", Authenticate(http.HandlerFunc(a.DeleteEventByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/event/{id}", Authenticate(http.HandlerFunc(a.GetEventByID), false)).Methods("GET")
 	a.Router.Handle("/api/v1/event/{id}", Authenticate(http.HandlerFunc(a.UpdateEventByID), false)).Methods("PUT")
+	a.Router.Handle("/api/v1/events", Authenticate(http.HandlerFunc(a.GetEvents), false)).Methods("GET")
 	// media
 	a.Router.Handle("/api/v1/media", Authenticate(http.HandlerFunc(a.GetMedia), false)).Methods("GET")
 	a.Router.Handle("/api/v1/media", Authenticate(http.HandlerFunc(a.AddMedia), false)).Methods("POST")
