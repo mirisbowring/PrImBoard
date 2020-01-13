@@ -18,9 +18,9 @@ type Media struct {
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
 	Groups          []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
-	TimestampUpload int64                `json:"timestamp_upload,omitempty" bson:"timestamp_upload,omitempty"`
+	TimestampUpload int64                `json:"timestampUpload,omitempty" bson:"timestampUpload,omitempty"`
 	URL             string               `json:"url,omitempty" bson:"url,omitempty"`
-	URLThumb        string               `json:"urlthumb,omitempty" bson:"urlthumb,omitempty"`
+	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
 }

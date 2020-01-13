@@ -14,11 +14,11 @@ type Event struct {
 	Comments          []*Comment         `json:"comments,omitempty" bson:"comments,omitempty"`
 	Creator           string             `json:"creator,omitempty" bson:"creator,omitempty"`
 	Groups            []int32            `json:"groups,omitempty" bson:"groups,omitempty"`
-	TimestampCreation int64              `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
-	TimestampStart    int64              `json:"timestamp_start,omitempty" bson:"timestamp_start,omitempty"`
-	TimestampEnd      int64              `json:"timestamp_end,omitempty" bson:"timestamp_end,omitempty"`
+	TimestampCreation int64              `json:"timestampCreation,omitempty" bson:"timestampCreation,omitempty"`
+	TimestampStart    int64              `json:"timestampStart,omitempty" bson:"timestampStart,omitempty"`
+	TimestampEnd      int64              `json:"timestampEnd,omitempty" bson:"timestampEnd,omitempty"`
 	URL               string             `json:"url,omitempty" bson:"url,omitempty"`
-	URLThumb          string             `json:"url_thumb,omitempty" bson:"url_thumb,omitempty"`
+	URLThumb          string             `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 }
 
 // name of the mongo collection

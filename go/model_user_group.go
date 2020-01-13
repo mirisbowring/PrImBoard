@@ -11,7 +11,7 @@ type UserGroup struct {
 	ID                primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	Title             string             `json:"title,omitempty" bson:"title,omitempty"`
 	Creator           string             `json:"creator,omitempty" bson:"creator,omitempty"`
-	TimestampCreation int64              `json:"timestamp_creation,omitempty" bson:"timestamp_creation,omitempty"`
+	TimestampCreation int64              `json:"timestampCreation,omitempty" bson:"timestampCreation,omitempty"`
 	Users             []string           `json:"users,omitempty" bson:"users,omitempty"`
 }
 
