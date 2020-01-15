@@ -14,7 +14,7 @@ type Media struct {
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
 	Creator         string               `json:"creator,omitempty" bson:"creator,omitempty"`
-	Tags            []int32              `json:"tags,omitempty" bson:"tags,omitempty"`
+	Tags            []string              `json:"tags,omitempty" bson:"tags,omitempty"`
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
 	Groups          []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
