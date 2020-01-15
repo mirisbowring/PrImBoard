@@ -19,6 +19,7 @@ func Authenticate(h http.Handler, logout bool) http.Handler {
 			}
 			h.ServeHTTP(w, r)
 		} else {
+			CloseSession(&w, r)
 			RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
 			return
 		}
