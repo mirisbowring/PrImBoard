@@ -28,7 +28,7 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// setting creation timestamp
-	m.Timestamp = int64(time.Now().Unix())
+	m.TimestampUpload = int64(time.Now().Unix())
 	// try to insert model into db
 	result, err := m.AddMedia(a.DB)
 	if err != nil {
