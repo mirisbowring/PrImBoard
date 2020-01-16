@@ -34,6 +34,7 @@ var mediaColName = "media"
 // AddMedia creates the model in the mongodb
 func (m *Media) AddMedia(db *mongo.Database) (*mongo.InsertOneResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
+	m.checkTags(db)
 	result, err := col.InsertOne(ctx, m)
 	CloseContext()
 	return result, err
@@ -83,8 +84,8 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 // UpdateMedia updates the record with the passed one
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	filter := bson.M{"_id": m.ID}
 	um.checkTags(db)
+	filter := bson.M{"_id": m.ID}
 	update := bson.M{"$set": um}
 	result, err := col.UpdateOne(ctx, filter, update)
 	CloseContext()
