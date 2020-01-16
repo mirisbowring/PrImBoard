@@ -41,6 +41,15 @@ func (t *Tag) GetTag(db *mongo.Database) error {
 	return err
 }
 
+// GetTagByName returns the specified entry from the mongodb
+func (t *Tag) GetTagByName(db *mongo.Database) error {
+	col, ctx := GetColCtx(tColName, db, 30)
+	filter := bson.M{"name": t.Name}
+	err := col.FindOne(ctx, filter).Decode(&t)
+	CloseContext()
+	return err
+}
+
 // UpdateTag updates the record with the passed one
 func (t *Tag) UpdateTag(db *mongo.Database, ut Tag) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(tColName, db, 30)

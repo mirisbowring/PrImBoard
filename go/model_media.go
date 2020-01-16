@@ -1,6 +1,9 @@
 package primboard
 
 import (
+	"log"
+	"strings"
+
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"gopkg.in/mgo.v2/bson"
@@ -14,7 +17,7 @@ type Media struct {
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
 	Creator         string               `json:"creator,omitempty" bson:"creator,omitempty"`
-	Tags            []string              `json:"tags,omitempty" bson:"tags,omitempty"`
+	Tags            []Tag                `json:"tags,omitempty" bson:"tags,omitempty"`
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
 	Groups          []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
@@ -81,8 +84,33 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
+	um.checkTags(db)
 	update := bson.M{"$set": um}
 	result, err := col.UpdateOne(ctx, filter, update)
 	CloseContext()
 	return result, err
+}
+
+// checkTags iterates over the tag array of the media and adds new tags to the
+// tag collection
+func (m *Media) checkTags(db *mongo.Database) error {
+	for _, tag := range m.Tags {
+		if !tag.ID.IsZero() {
+			continue
+		}
+		tag.Name = strings.ToLower(tag.Name)
+		tag.Name = strings.TrimSpace(tag.Name)
+		// check of tag exist already
+		if err := tag.GetTagByName(db); err != nil {
+			switch err {
+			case mongo.ErrNoDocuments:
+				res, _ := tag.AddTag(db)
+				tag.ID = res.InsertedID.(primitive.ObjectID)
+				log.Printf("Created new tag <%s>", tag.Name)
+			default:
+				return err
+			}
+		}
+	}
+	return nil
 }

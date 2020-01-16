@@ -123,7 +123,8 @@ func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	parts := strings.Split(vars["ipfs_id"], "_")
+	id, _ := primitive.ObjectIDFromHex(parts[1])
 	// store new model in tmp object
 	var um Media
 	decoder := json.NewDecoder(r.Body)

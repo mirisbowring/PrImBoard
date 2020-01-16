@@ -23,7 +23,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/media", Authenticate(http.HandlerFunc(a.AddMedia), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}", Authenticate(http.HandlerFunc(a.DeleteMediaByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/media/{id}", Authenticate(http.HandlerFunc(a.GetMediaByID), false)).Methods("GET")
-	a.Router.Handle("/api/v1/media/{id}", Authenticate(http.HandlerFunc(a.UpdateMediaByID), false)).Methods("PUT")
+	a.Router.Handle("/api/v1/media/{ipfs_id}", Authenticate(http.HandlerFunc(a.UpdateMediaByID), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/mediaByHash/{ipfs_id}", Authenticate(http.HandlerFunc(a.GetMediaByHash), false)).Methods("GET")
 	// tag
 	a.Router.Handle("/api/v1/tag", Authenticate(http.HandlerFunc(a.AddTag), false)).Methods("POST")
