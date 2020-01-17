@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Media holds all information about the item
@@ -82,32 +83,43 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 }
 
 // UpdateMedia updates the record with the passed one
-func (m *Media) UpdateMedia(db *mongo.Database, um Media) (*mongo.UpdateResult, error) {
+func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	um.checkTags(db)
 	filter := bson.M{"_id": m.ID}
 	update := bson.M{"$set": um}
-	result, err := col.UpdateOne(ctx, filter, update)
+	// options to return the update document
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// Execute query
+	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
 	CloseContext()
-	return result, err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // checkTags iterates over the tag array of the media and adds new tags to the
 // tag collection
 func (m *Media) checkTags(db *mongo.Database) error {
-	for _, tag := range m.Tags {
-		if !tag.ID.IsZero() {
+	for i := range m.Tags {
+		if !m.Tags[i].ID.IsZero() {
 			continue
 		}
-		tag.Name = strings.ToLower(tag.Name)
-		tag.Name = strings.TrimSpace(tag.Name)
+		m.Tags[i].Name = strings.ToLower(m.Tags[i].Name)
+		m.Tags[i].Name = strings.TrimSpace(m.Tags[i].Name)
 		// check of tag exist already
-		if err := tag.GetTagByName(db); err != nil {
+		if err := m.Tags[i].GetTagByName(db); err != nil {
 			switch err {
 			case mongo.ErrNoDocuments:
-				res, _ := tag.AddTag(db)
-				tag.ID = res.InsertedID.(primitive.ObjectID)
-				log.Printf("Created new tag <%s>", tag.Name)
+				res, _ := m.Tags[i].AddTag(db)
+				m.Tags[i].ID = res.InsertedID.(primitive.ObjectID)
+				log.Printf("Created new tag <%s>", m.Tags[i].Name)
 			default:
 				return err
 			}

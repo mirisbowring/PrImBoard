@@ -136,12 +136,12 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	// trying to update model with requested body
 	m := Media{ID: id}
-	result, err := m.UpdateMedia(a.DB, um)
+	err := m.UpdateMedia(a.DB, um)
 	if err != nil {
 		// Error occured during update
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, m)
 }
