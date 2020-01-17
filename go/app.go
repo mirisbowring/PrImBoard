@@ -35,6 +35,7 @@ type Config struct {
 	CookieSecure     bool     `json:"cookie_secure"`
 	CookieTokenTitle string   `json:"cookie_token_title"`
 	AllowedOrigins   []string `json:"allowed_origins"`
+	TagPreviewLimit  int64    `json:"tag_preview_limit"`
 }
 
 // Run starts the application on the passed address with the inherited router

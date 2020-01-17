@@ -85,7 +85,7 @@ func (a *App) GetTagsByName(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	keyword := vars["name"]
-	tags, err := GetTagsByKeyword(a.DB, keyword)
+	tags, err := GetTagsByKeyword(a.DB, keyword, a.Config.TagPreviewLimit)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -52,11 +52,11 @@ func (t *Tag) GetTagByName(db *mongo.Database) error {
 }
 
 // GetTagsByKeyword returns the topmost tags that are starting with the keyword
-func GetTagsByKeyword(db *mongo.Database, keyword string) ([]Tag, error) {
+func GetTagsByKeyword(db *mongo.Database, keyword string, limit int64) ([]Tag, error) {
 	col, ctx := GetColCtx(tColName, db, 30)
 	// define options (sort, limit, ...)
 	options := options.Find()
-	options.SetSort(bson.M{"name": 1}).SetLimit(5)
+	options.SetSort(bson.M{"name": 1}).SetLimit(limit)
 	// define filter
 	filter := bson.M{
 		"name": primitive.Regex{Pattern: "^" + keyword},
