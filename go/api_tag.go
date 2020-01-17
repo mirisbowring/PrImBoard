@@ -74,6 +74,25 @@ func (a *App) GetTagByID(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, t)
 }
 
+// GetTags returns all Tags available
+func (a *App) GetTags(w http.ResponseWriter, r *http.Request) {
+	// var t Tag
+
+}
+
+// GetTagsByName returns available Tags by their name, starting with
+func (a *App) GetTagsByName(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)
+	keyword := vars["name"]
+	tags, err := GetTagsByKeyword(a.DB, keyword)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, tags)
+}
+
 // UpdateTagByID handles the webrequest for updating the Tag with the passed request body
 func (a *App) UpdateTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request

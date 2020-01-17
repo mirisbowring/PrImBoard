@@ -1,9 +1,10 @@
 package primboard
 
 import (
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Tag has a name and an ID for the reference
@@ -48,6 +49,43 @@ func (t *Tag) GetTagByName(db *mongo.Database) error {
 	err := col.FindOne(ctx, filter).Decode(&t)
 	CloseContext()
 	return err
+}
+
+// GetTagsByKeyword returns the topmost tags that are starting with the keyword
+func GetTagsByKeyword(db *mongo.Database, keyword string) ([]Tag, error) {
+	col, ctx := GetColCtx(tColName, db, 30)
+	// define options (sort, limit, ...)
+	options := options.Find()
+	options.SetSort(bson.M{"name": 1}).SetLimit(5)
+	// define filter
+	filter := bson.M{
+		"name": primitive.Regex{Pattern: "^" + keyword},
+	}
+	// execute filter query
+	var tags []Tag
+	cursor, err := col.Find(ctx, filter, options)
+	if err = cursor.All(ctx, &tags); err != nil {
+		return nil, err
+	}
+
+	// cursor, err := col.Find(ctx, filter)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// var tags []Tag
+	// // iterate over cursor and map tags
+	// for cursor.Next(ctx) {
+	// 	var t Tag
+	// 	cursor.Decode(&t)
+	// 	tags = append(tags, t)
+	// }
+	// // report errors if occured
+	// if err = cursor.Err(); err != nil {
+	// 	return nil, err
+	// }
+	CloseContext()
+	return tags, nil
+
 }
 
 // UpdateTag updates the record with the passed one

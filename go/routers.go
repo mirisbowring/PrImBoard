@@ -30,6 +30,8 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/tag/{id}", Authenticate(http.HandlerFunc(a.DeleteTagByID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/tag/{id}", Authenticate(http.HandlerFunc(a.GetTagByID), false)).Methods("GET")
 	a.Router.Handle("/api/v1/tag/{id}", Authenticate(http.HandlerFunc(a.UpdateTagByID), false)).Methods("PUT")
+	a.Router.Handle("/api/v1/tags", Authenticate(http.HandlerFunc(a.GetTags), false)).Methods("GET")
+	a.Router.Handle("/api/v1/tags/{name}", Authenticate(http.HandlerFunc(a.GetTagsByName), false)).Methods("GET")
 	// user
 	a.Router.Handle("/api/v1/user", Authenticate(http.HandlerFunc(a.CreateUser), false)).Methods("POST")
 	a.Router.Handle("/api/v1/user/{username}", Authenticate(http.HandlerFunc(a.DeleteUser), false)).Methods("DELETE")
