@@ -11,6 +11,7 @@ type User struct {
 	FirstName string `json:"firstName,omitempty" bson:"firstName,omitempty"`
 	LastName  string `json:"lastName,omitempty" bson:"lastName,omitempty"`
 	Password  string `json:"password,omitempty" bson:"password,omitempty"`
+	URLImage  string `json:"urlImage,omitempty" bson:"urlImage,omitempty"`
 }
 
 // name of the mongo collection
