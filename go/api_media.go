@@ -29,6 +29,8 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	// setting creation timestamp
 	m.TimestampUpload = int64(time.Now().Unix())
+	// set the username
+	m.Creator = w.Header().Get("user")
 	// try to insert model into db
 	result, err := m.AddMedia(a.DB)
 	if err != nil {
@@ -131,6 +133,10 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	if err := decoder.Decode(&um); err != nil {
 		// error occured during encoding
 		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		return
+	}
+	if err := um.checkComments(w.Header().Get("user")); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer r.Body.Close()

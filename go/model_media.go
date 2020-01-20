@@ -1,8 +1,10 @@
 package primboard
 
 import (
+	"errors"
 	"log"
 	"strings"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -100,6 +102,33 @@ func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
 	CloseContext()
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+// checkComments verifies that only one new comment has been passed and assignes
+// the passed username and the current unix timestamp to the new comment
+// this method is NOT called on create or update
+func (m *Media) checkComments(user string) error {
+	// skip if comments are nil or empty
+	if m.Comments == nil || len(m.Comments) == 0 {
+		return nil
+	}
+	// check if more than one new comment added
+	var newComments int = 0
+	for i := range m.Comments {
+		if m.Comments[i].Timestamp != 0 && m.Comments[i].Username != "" {
+			continue
+		}
+		// increment new comment counter
+		newComments++
+		// throw error if more than one new comment
+		if newComments > 1 {
+			return errors.New("too many new comments")
+		}
+		// assign username to new comment
+		m.Comments[i].Username = user
+		m.Comments[i].Timestamp = int64(time.Now().Unix())
 	}
 	return nil
 }

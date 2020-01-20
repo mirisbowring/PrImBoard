@@ -16,6 +16,9 @@ func Authenticate(h http.Handler, logout bool) http.Handler {
 		if s != nil && s.IsValid() {
 			if !logout {
 				SetSessionCookie(&w, r, s)
+				// set temporary user for internal processing
+				// (will be deleted in response)
+				w.Header().Set("user", s.User.Username)
 			}
 			h.ServeHTTP(w, r)
 		} else {

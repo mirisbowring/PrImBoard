@@ -106,6 +106,8 @@ func RespondWithError(w http.ResponseWriter, code int, message string) {
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	//	enableCors(&w)
 	response, _ := json.Marshal(payload)
+	// delete the temporary user key from header
+	w.Header().Del("user")
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
