@@ -36,6 +36,7 @@ type Config struct {
 	CookieTokenTitle string   `json:"cookie_token_title"`
 	AllowedOrigins   []string `json:"allowed_origins"`
 	TagPreviewLimit  int64    `json:"tag_preview_limit"`
+	SessionRotation  bool     `json:"session_rotation"`
 }
 
 // Run starts the application on the passed address with the inherited router
@@ -76,6 +77,30 @@ func (a *App) Initialize() {
 	a.Connect()
 	a.InitializeRoutes()
 	api = a
+}
+
+// Authenticate is a middleware to pre-authenticate routes via the session token
+// if logout is true, no new session token is beeing generated
+func (a *App) Authenticate(h http.Handler, logout bool) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := ReadSessionCookie(&w, r)
+		s := GetSession(token)
+		if s != nil && s.IsValid() {
+			if !logout {
+				if a.Config.SessionRotation {
+					SetSessionCookie(&w, r, s)
+				}
+				// set temporary user for internal processing
+				// (will be deleted in response)
+				w.Header().Set("user", s.User.Username)
+			}
+			h.ServeHTTP(w, r)
+		} else {
+			CloseSession(&w, r)
+			RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
+			return
+		}
+	})
 }
 
 // helpers
