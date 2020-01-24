@@ -111,6 +111,7 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 }
 
 // UpdateMedia updates the record with the passed one
+// Does NOT call the checkComments Method
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	um.checkTags(db)

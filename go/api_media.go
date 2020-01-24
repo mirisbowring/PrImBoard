@@ -120,9 +120,9 @@ func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, m)
 }
 
-// UpdateMediaByID handles the webrequest for updating the Media with the passed
+// UpdateMediaByHash handles the webrequest for updating the Media with the passed
 // request body
-func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
+func (a *App) UpdateMediaByHash(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	parts := strings.Split(vars["ipfs_id"], "_")
