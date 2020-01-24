@@ -29,6 +29,7 @@ type Media struct {
 	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
+	Users           []*User              `json:"users,omitempty" bson:"users,omitempty"`
 }
 
 // name of the mongo collection
@@ -78,10 +79,35 @@ func GetAllMedia(db *mongo.Database) ([]Media, error) {
 // GetMedia returns the specified entry from the mongodb
 func (m *Media) GetMedia(db *mongo.Database) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	filter := bson.M{"_id": m.ID}
-	err := col.FindOne(ctx, filter).Decode(&m)
+	// filter := bson.M{"_id": m.ID}
+	pipeline := []bson.M{
+		bson.M{"$match": bson.M{"_id": m.ID}},
+		bson.M{"$lookup": bson.M{
+			"from":         "user",
+			"localField":   "comments.username",
+			"foreignField": "username",
+			"as":           "users",
+		}},
+	}
+	opts := options.Aggregate()
+	cursor, err := col.Aggregate(ctx, pipeline, opts)
+	if err != nil {
+		return err
+	}
+	var found = false
+	for cursor.Next(ctx) {
+		err := cursor.Decode(&m)
+		if err != nil {
+			return err
+		}
+		found = true
+		break
+	}
 	CloseContext()
-	return err
+	if !found {
+		return errors.New("no results")
+	}
+	return nil
 }
 
 // UpdateMedia updates the record with the passed one
