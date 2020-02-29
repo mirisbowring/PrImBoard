@@ -3,6 +3,7 @@ package primboard
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,7 +61,31 @@ func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 
 // GetMedia handles the webrequest for receiving all media
 func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
-	ms, err := GetAllMedia(a.DB)
+	var after primitive.ObjectID
+	var size int
+	// check if after query param is present
+	tmp, ok := r.URL.Query()["after"]
+	if !ok || len(tmp[0]) < 1 {
+		// no after specified (selecting from top)
+		// after = primitive.NewObjectID()
+	} else {
+		after, _ = primitive.ObjectIDFromHex(tmp[0])
+	}
+	// check if page size query param is present
+	tmp, ok = r.URL.Query()["size"]
+	if !ok || len(tmp[0]) < 1 {
+		// no page size specified (using default)
+		size = a.Config.DefaultMediaPageSize
+	} else if i, err := strconv.Atoi(tmp[0]); err != nil {
+		// page size is not an int
+		size = a.Config.DefaultMediaPageSize
+	} else {
+		// page size set
+		size = i
+	}
+
+	// ms, err := GetAllMedia(a.DB)
+	ms, err := GetMediaPage(a.DB, after, int64(size))
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -72,7 +97,7 @@ func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	m := Media{ID: id}
 	// try to select media
