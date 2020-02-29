@@ -53,6 +53,25 @@ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 	return result, err
 }
 
+// GetMediaPage returns the requested page after a specific id
+func GetMediaPage(db *mongo.Database, after primitive.ObjectID, size int64) ([]Media, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	var media []Media
+	opts := options.Find().SetLimit(size).SetSort(bson.M{"_id": -1})
+	var filter bson.M
+	if after.IsZero() {
+		filter = bson.M{}
+	} else {
+		filter = bson.M{"_id": bson.M{"$lt": after}}
+	}
+	cursor, err := col.Find(ctx, filter, opts)
+	if err != nil {
+		return media, err
+	}
+	cursor.All(ctx, &media)
+	return media, nil
+}
+
 // GetAllMedia selects all Media from the mongodb
 func GetAllMedia(db *mongo.Database) ([]Media, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
