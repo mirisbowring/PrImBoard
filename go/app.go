@@ -26,17 +26,18 @@ type App struct {
 
 // Config struct that stores every api related settings
 type Config struct {
-	Domain           string   `json:"domain"`
-	Port             int      `json:"port"`
-	MongoURL         string   `json:"mongo_url"`
-	DBName           string   `json:"database_name"`
-	CookiePath       string   `json:"cookie_path"`
-	CookieHTTPOnly   bool     `json:"cookie_http_only"`
-	CookieSecure     bool     `json:"cookie_secure"`
-	CookieTokenTitle string   `json:"cookie_token_title"`
-	AllowedOrigins   []string `json:"allowed_origins"`
-	TagPreviewLimit  int64    `json:"tag_preview_limit"`
-	SessionRotation  bool     `json:"session_rotation"`
+	Domain               string   `json:"domain"`
+	Port                 int      `json:"port"`
+	MongoURL             string   `json:"mongo_url"`
+	DBName               string   `json:"database_name"`
+	CookiePath           string   `json:"cookie_path"`
+	CookieHTTPOnly       bool     `json:"cookie_http_only"`
+	CookieSecure         bool     `json:"cookie_secure"`
+	CookieTokenTitle     string   `json:"cookie_token_title"`
+	AllowedOrigins       []string `json:"allowed_origins"`
+	TagPreviewLimit      int64    `json:"tag_preview_limit"`
+	SessionRotation      bool     `json:"session_rotation"`
+	DefaultMediaPageSize int      `json:"default_media_page_size"`
 }
 
 // Run starts the application on the passed address with the inherited router
