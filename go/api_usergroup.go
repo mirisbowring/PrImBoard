@@ -41,7 +41,7 @@ func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 func (a *App) DeleteUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	ug := UserGroup{ID: id}
 	// try to delete model
@@ -58,7 +58,7 @@ func (a *App) DeleteUserGroupByID(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	ug := UserGroup{ID: id}
 	// try to select user
@@ -82,7 +82,7 @@ func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// store new model in tmp object
 	var uug UserGroup
 	decoder := json.NewDecoder(r.Body)

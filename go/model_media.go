@@ -14,7 +14,7 @@ import (
 
 // Media holds all information about the item
 type Media struct {
-	ID              primitive.ObjectID   `json:"_id,omitempty" bson:"_id,omitempty"`
+	ID              primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
 	Sha1            string               `json:"sha1,omitempty" bson:"sha1,omitempty"`
 	Title           string               `json:"title,omitempty" bson:"title,omitempty"`
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`

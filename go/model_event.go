@@ -8,7 +8,7 @@ import (
 
 // Event holds comments, media and the information about the the event
 type Event struct {
-	ID                primitive.ObjectID   `json:"_id,omitempty" bson:"_id,omitempty"`
+	ID                primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
 	Title             string               `json:"title,omitempty" bson:"title,omitempty"`
 	Description       string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments          []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`

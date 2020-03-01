@@ -8,7 +8,7 @@ import (
 
 // UserGroup holts the users and the information about the group
 type UserGroup struct {
-	ID                primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
+	ID                primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
 	Title             string             `json:"title,omitempty" bson:"title,omitempty"`
 	Creator           string             `json:"creator,omitempty" bson:"creator,omitempty"`
 	TimestampCreation int64              `json:"timestampCreation,omitempty" bson:"timestampCreation,omitempty"`

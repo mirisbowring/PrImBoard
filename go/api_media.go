@@ -46,7 +46,7 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	m := Media{ID: id}
 	// try to delete model

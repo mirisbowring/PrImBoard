@@ -41,7 +41,7 @@ func (a *App) AddEvent(w http.ResponseWriter, r *http.Request) {
 func (a *App) DeleteEventByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	e := Event{ID: id}
 	// try to delete model
@@ -68,7 +68,7 @@ func (a *App) GetEvents(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetEventByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	e := Event{ID: id}
 	// try to select user
@@ -91,7 +91,7 @@ func (a *App) GetEventByID(w http.ResponseWriter, r *http.Request) {
 func (a *App) UpdateEventByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// store new model in tmp object
 	var ue Event
 	decoder := json.NewDecoder(r.Body)

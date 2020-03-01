@@ -38,7 +38,7 @@ func (a *App) AddTag(w http.ResponseWriter, r *http.Request) {
 func (a *App) DeleteTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	t := Tag{ID: id}
 	// try to delete model
@@ -55,7 +55,7 @@ func (a *App) DeleteTagByID(w http.ResponseWriter, r *http.Request) {
 func (a *App) GetTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	t := Tag{ID: id}
 	// try to select user
@@ -97,7 +97,7 @@ func (a *App) GetTagsByName(w http.ResponseWriter, r *http.Request) {
 func (a *App) UpdateTagByID(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["_id"])
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// store new model in tmp object
 	var ut Tag
 	decoder := json.NewDecoder(r.Body)
