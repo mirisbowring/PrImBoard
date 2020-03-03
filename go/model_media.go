@@ -54,17 +54,34 @@ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 }
 
 // GetMediaPage returns the requested page after a specific id
-func GetMediaPage(db *mongo.Database, after primitive.ObjectID, size int64) ([]Media, error) {
+func GetMediaPage(db *mongo.Database, after primitive.ObjectID, size int64, tagFilter string, eventID primitive.ObjectID) ([]Media, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	var media []Media
 	opts := options.Find().SetLimit(size).SetSort(bson.M{"_id": -1})
-	var filter bson.M
-	if after.IsZero() {
-		filter = bson.M{}
-	} else {
-		filter = bson.M{"_id": bson.M{"$lt": after}}
+	filters := []bson.M{}
+	// check if an previous page item was passed
+	if !after.IsZero() {
+		filters = append(filters, bson.M{"_id": bson.M{"$lt": after}})
 	}
-	cursor, err := col.Find(ctx, filter, opts)
+	// check if event was specified
+	if !eventID.IsZero() {
+		filters = append(filters, bson.M{"mo": eventID})
+	}
+	// check if filter have been specified
+	if len(tagFilter) > 0 {
+		var tags = parseTags(tagFilter)
+		filters = append(filters, bson.M{"tags": bson.M{"$elemMatch": bson.M{"name": bson.M{"$in": tags}}}})
+	}
+
+	// create empty bson if no filter specified to prevent npe
+	var tmp bson.M
+	if len(filters) > 0 {
+		tmp = bson.M{"$and": filters}
+	} else {
+		tmp = bson.M{}
+	}
+	// fetch results
+	cursor, err := col.Find(ctx, tmp, opts)
 	if err != nil {
 		return media, err
 	}
@@ -201,4 +218,9 @@ func (m *Media) checkTags(db *mongo.Database) error {
 		}
 	}
 	return nil
+}
+
+// parse the tag filter string into list (splitted at space)
+func parseTags(tagFilter string) []string {
+	return strings.Split(tagFilter, " ")
 }

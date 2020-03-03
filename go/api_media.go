@@ -62,15 +62,35 @@ func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 // GetMedia handles the webrequest for receiving all media
 func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 	var after primitive.ObjectID
+	var event primitive.ObjectID
+	var filter string
 	var size int
+
+	// check if event query param is present
+	tmp, ok := r.URL.Query()["event"]
+	if !ok || len(tmp[0]) < 1 {
+		// no event specified
+	} else {
+		event, _ = primitive.ObjectIDFromHex(tmp[0])
+	}
+
+	// check if filter query param is present
+	tmp, ok = r.URL.Query()["filter"]
+	if !ok || len(tmp[0]) < 1 {
+		// no filter specified
+	} else {
+		filter = tmp[0]
+	}
+
 	// check if after query param is present
-	tmp, ok := r.URL.Query()["after"]
+	tmp, ok = r.URL.Query()["after"]
 	if !ok || len(tmp[0]) < 1 {
 		// no after specified (selecting from top)
 		// after = primitive.NewObjectID()
 	} else {
 		after, _ = primitive.ObjectIDFromHex(tmp[0])
 	}
+
 	// check if page size query param is present
 	tmp, ok = r.URL.Query()["size"]
 	if !ok || len(tmp[0]) < 1 {
@@ -85,7 +105,7 @@ func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ms, err := GetAllMedia(a.DB)
-	ms, err := GetMediaPage(a.DB, after, int64(size))
+	ms, err := GetMediaPage(a.DB, after, int64(size), filter, event)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
