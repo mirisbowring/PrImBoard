@@ -61,51 +61,68 @@ func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 
 // GetMedia handles the webrequest for receiving all media
 func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
-	var after primitive.ObjectID
-	var event primitive.ObjectID
-	var filter string
-	var size int
+	var query MediaQuery
 
 	// check if event query param is present
 	tmp, ok := r.URL.Query()["event"]
-	if !ok || len(tmp[0]) < 1 {
-		// no event specified
-	} else {
-		event, _ = primitive.ObjectIDFromHex(tmp[0])
+	if ok && len(tmp[0]) > 1 {
+		query.Event, _ = primitive.ObjectIDFromHex(tmp[0])
 	}
 
 	// check if filter query param is present
 	tmp, ok = r.URL.Query()["filter"]
-	if !ok || len(tmp[0]) < 1 {
-		// no filter specified
-	} else {
-		filter = tmp[0]
+	if ok && len(tmp[0]) > 1 {
+		query.Filter = tmp[0]
 	}
 
 	// check if after query param is present
 	tmp, ok = r.URL.Query()["after"]
-	if !ok || len(tmp[0]) < 1 {
-		// no after specified (selecting from top)
-		// after = primitive.NewObjectID()
-	} else {
-		after, _ = primitive.ObjectIDFromHex(tmp[0])
+	if ok && len(tmp[0]) > 1 {
+		query.After, _ = primitive.ObjectIDFromHex(tmp[0])
+	}
+
+	// check if before query param is present
+	tmp, ok = r.URL.Query()["before"]
+	if ok && len(tmp[0]) > 1 {
+		query.Before, _ = primitive.ObjectIDFromHex(tmp[0])
+	}
+
+	tmp, ok = r.URL.Query()["dsc"]
+	if ok && len(tmp[0]) > 1 {
+		if b, _ := strconv.ParseBool(tmp[0]); b {
+			query.ASC = 1
+		} else {
+			query.ASC = -1
+		}
+	}
+
+	// check if from query param is present
+	tmp, ok = r.URL.Query()["from"]
+	if ok && len(tmp[0]) > 1 {
+		query.From, _ = primitive.ObjectIDFromHex(tmp[0])
+	}
+
+	// check if before query param is present
+	tmp, ok = r.URL.Query()["until"]
+	if ok && len(tmp[0]) > 1 {
+		query.Until, _ = primitive.ObjectIDFromHex(tmp[0])
 	}
 
 	// check if page size query param is present
 	tmp, ok = r.URL.Query()["size"]
 	if !ok || len(tmp[0]) < 1 {
 		// no page size specified (using default)
-		size = a.Config.DefaultMediaPageSize
+		query.Size = a.Config.DefaultMediaPageSize
 	} else if i, err := strconv.Atoi(tmp[0]); err != nil {
 		// page size is not an int
-		size = a.Config.DefaultMediaPageSize
+		query.Size = a.Config.DefaultMediaPageSize
 	} else {
 		// page size set
-		size = i
+		query.Size = i
 	}
 
 	// ms, err := GetAllMedia(a.DB)
-	ms, err := GetMediaPage(a.DB, after, int64(size), filter, event)
+	ms, err := GetMediaPage(a.DB, query)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -172,6 +189,37 @@ func (a *App) UpdateMediaByHash(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	parts := strings.Split(vars["ipfs_id"], "_")
 	id, _ := primitive.ObjectIDFromHex(parts[1])
+	// store new model in tmp object
+	var um Media
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&um); err != nil {
+		// error occured during encoding
+		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		return
+	}
+	if err := um.checkComments(w.Header().Get("user")); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer r.Body.Close()
+	// trying to update model with requested body
+	m := Media{ID: id}
+	err := m.UpdateMedia(a.DB, um)
+	if err != nil {
+		// Error occured during update
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// Update successful
+	RespondWithJSON(w, http.StatusOK, m)
+}
+
+// UpdateMediaByID handles the webrequest for updating the Media with the passed
+// request body
+func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// store new model in tmp object
 	var um Media
 	decoder := json.NewDecoder(r.Body)
