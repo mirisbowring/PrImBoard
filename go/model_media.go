@@ -54,22 +54,36 @@ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 }
 
 // GetMediaPage returns the requested page after a specific id
-func GetMediaPage(db *mongo.Database, after primitive.ObjectID, size int64, tagFilter string, eventID primitive.ObjectID) ([]Media, error) {
+func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
+	// verify that query combination is able to be filtered
+	if err := query.IsValid(); err != nil {
+		return nil, err
+	}
+	// parse the order of
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	var media []Media
-	opts := options.Find().SetLimit(size).SetSort(bson.M{"_id": -1})
+	opts := options.Find().SetLimit(int64(query.Size)).SetSort(bson.M{"_id": query.ASC})
 	filters := []bson.M{}
 	// check if an previous page item was passed
-	if !after.IsZero() {
-		filters = append(filters, bson.M{"_id": bson.M{"$lt": after}})
+	if !query.After.IsZero() {
+		filters = append(filters, bson.M{"_id": bson.M{"$lt": query.After}})
+	}
+	// check if an previous page item was passed
+	if !query.Before.IsZero() {
+		filters = append(filters, bson.M{"_id": bson.M{"$gt": query.Before}})
+	}
+	if !query.From.IsZero() {
+		filters = append(filters, bson.M{"_id": bson.M{"$lte": query.From}})
+	}
+	if !query.Until.IsZero() {
+		filters = append(filters, bson.M{"_id": bson.M{"$gte": query.Until}})
 	}
 	// check if event was specified
-	if !eventID.IsZero() {
-		filters = append(filters, bson.M{"mo": eventID})
+	if !query.Event.IsZero() {
+		filters = append(filters, bson.M{"mo": query.Event})
 	}
 	// check if filter have been specified
-	if len(tagFilter) > 0 {
-		var tags = parseTags(tagFilter)
+	if len(query.Filter) > 0 {
+		var tags = parseTags(query.Filter)
 		filters = append(filters, bson.M{"tags": bson.M{"$elemMatch": bson.M{"name": bson.M{"$in": tags}}}})
 	}
 
@@ -80,7 +94,9 @@ func GetMediaPage(db *mongo.Database, after primitive.ObjectID, size int64, tagF
 	} else {
 		tmp = bson.M{}
 	}
+
 	// fetch results
+	var media []Media
 	cursor, err := col.Find(ctx, tmp, opts)
 	if err != nil {
 		return media, err
