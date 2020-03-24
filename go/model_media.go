@@ -162,6 +162,28 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 	return nil
 }
 
+// Save writes changes, made to the instance itself, to the database and
+// overrides the instance with the return value from the database
+func (m *Media) Save(db *mongo.Database) error {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.ID}
+	update := bson.M{"$set": m}
+	// options to return the update document
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// Execute query
+	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
+	CloseContext()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // UpdateMedia updates the record with the passed one
 // Does NOT call the checkComments Method
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
