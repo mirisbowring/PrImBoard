@@ -2,7 +2,6 @@ package primboard
 
 import (
 	"errors"
-	"log"
 	"strings"
 	"time"
 
@@ -20,7 +19,7 @@ type Media struct {
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
 	Creator         string               `json:"creator,omitempty" bson:"creator,omitempty"`
-	Tags            []Tag                `json:"tags,omitempty" bson:"tags,omitempty"`
+	Tags            []primitive.ObjectID `json:"tags,omitempty" bson:"tags,omitempty"`
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
 	Groups          []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
@@ -29,7 +28,7 @@ type Media struct {
 	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
-	Users           []*User              `json:"users,omitempty" bson:"users,omitempty"`
+	Users           []string             `json:"users,omitempty" bson:"users,omitempty"`
 }
 
 // name of the mongo collection
@@ -38,10 +37,57 @@ var mediaColName = "media"
 // AddMedia creates the model in the mongodb
 func (m *Media) AddMedia(db *mongo.Database) (*mongo.InsertOneResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	m.checkTags(db)
 	result, err := col.InsertOne(ctx, m)
 	CloseContext()
 	return result, err
+}
+
+// AddTag adds a tag primitive.ObjectID to the mapped tag set (ignores
+// duplicates)
+// Overrides the current model instance
+func (m *Media) AddTag(db *mongo.Database, t primitive.ObjectID) error {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.ID}
+	// specify the tag array to be handled as set
+	update := bson.M{"$addToSet": bson.M{"tags": t}}
+	// options to return the update document
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// Execute query
+	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
+	CloseContext()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddTags adds an array of primitive.ObjectID (of a tag) to the mapped tag set
+// (ignores duplicates)
+// Overrides the current model instance
+func (m *Media) AddTags(db *mongo.Database, tIDs []primitive.ObjectID) error {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.ID}
+	// specify the tag array to be handled as set
+	update := bson.M{"$addToSet": bson.M{"tags": bson.M{"$each": tIDs}}}
+	// options to return the update document
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// Execute query
+	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
+	CloseContext()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // DeleteMedia deletes the model from the mongodb
@@ -188,7 +234,6 @@ func (m *Media) Save(db *mongo.Database) error {
 // Does NOT call the checkComments Method
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	um.checkTags(db)
 	filter := bson.M{"_id": m.ID}
 	update := bson.M{"$set": um}
 	// options to return the update document
@@ -230,30 +275,6 @@ func (m *Media) checkComments(user string) error {
 		// assign username to new comment
 		m.Comments[i].Username = user
 		m.Comments[i].Timestamp = int64(time.Now().Unix())
-	}
-	return nil
-}
-
-// checkTags iterates over the tag array of the media and adds new tags to the
-// tag collection
-func (m *Media) checkTags(db *mongo.Database) error {
-	for i := range m.Tags {
-		if !m.Tags[i].ID.IsZero() {
-			continue
-		}
-		m.Tags[i].Name = strings.ToLower(m.Tags[i].Name)
-		m.Tags[i].Name = strings.TrimSpace(m.Tags[i].Name)
-		// check of tag exist already
-		if err := m.Tags[i].GetTagByName(db); err != nil {
-			switch err {
-			case mongo.ErrNoDocuments:
-				res, _ := m.Tags[i].AddTag(db)
-				m.Tags[i].ID = res.InsertedID.(primitive.ObjectID)
-				log.Printf("Created new tag <%s>", m.Tags[i].Name)
-			default:
-				return err
-			}
-		}
 	}
 	return nil
 }
