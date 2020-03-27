@@ -26,6 +26,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.UpdateMediaByID), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/media/{id}/comment", a.Authenticate(http.HandlerFunc(a.AddCommentByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}/tag", a.Authenticate(http.HandlerFunc(a.AddTagByMediaID), false)).Methods("POST")
+	a.Router.Handle("/api/v1/media/{id}/tags", a.Authenticate(http.HandlerFunc(a.AddTagsByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/mediaByHash/{ipfs_id}", a.Authenticate(http.HandlerFunc(a.UpdateMediaByHash), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/mediaByHash/{ipfs_id}", a.Authenticate(http.HandlerFunc(a.GetMediaByHash), false)).Methods("GET")
 	// tag

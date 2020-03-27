@@ -64,6 +64,33 @@ func (t *Tag) DeleteTag(db *mongo.Database) (*mongo.DeleteResult, error) {
 	return result, err
 }
 
+// GetIDCreate searches the database for the passed tag and adds the id to the
+// current tag. It creates a new tag document if the passed tag was not find in
+// the database
+func (t *Tag) GetIDCreate(db *mongo.Database) error {
+	// try to select tag from db
+	if err := t.GetTagByName(db); err != nil {
+		switch err {
+		case mongo.ErrNoDocuments:
+			// tag not found - adding to db
+			t.Name = strings.ToLower(t.Name)
+			t.Name = strings.TrimSpace(t.Name)
+			res, e := t.AddTag(db)
+			if e != nil {
+				return e
+			}
+			// append the returned id
+			t.ID = res.InsertedID.(primitive.ObjectID)
+			return nil
+		default:
+			// any error occured
+			return err
+		}
+	}
+	// tag was found and id was set
+	return nil
+}
+
 // GetTag returns the specified entry from the mongodb
 func (t *Tag) GetTag(db *mongo.Database) error {
 	col, ctx := GetColCtx(tColName, db, 30)

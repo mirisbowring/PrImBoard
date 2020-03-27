@@ -80,25 +80,8 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// getting or creating the new tag
-	if err := t.GetTagByName(a.DB); err != nil {
-		switch err {
-		case mongo.ErrNoDocuments:
-			// tag not found - adding to db
-			t.Name = strings.ToLower(t.Name)
-			t.Name = strings.TrimSpace(t.Name)
-			res, e := t.AddTag(a.DB)
-			if e != nil {
-				RespondWithError(w, http.StatusInternalServerError, "Failed to create new tag")
-				return
-			}
-			// set the returned id
-			t.ID = res.InsertedID.(primitive.ObjectID)
-		default:
-			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
+	if err := t.GetIDCreate(a.DB); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Failed to fetch tag id")
 	}
 
 	// parse route
@@ -108,6 +91,39 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 	m := Media{ID: id}
 	// append the new tag if not present
 	if err := m.AddTag(a.DB, t.ID); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		return
+	}
+	// success
+	RespondWithJSON(w, http.StatusOK, m)
+}
+
+// AddTagsByMediaID appends multiple tags to the specified media
+// creates a new tag if not in the tag document
+func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
+	var tags []Tag
+	var IDs []primitive.ObjectID
+	// decode body into tag model
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&tags); err != nil {
+		// an decode error occured
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	// iterating over all tags and adding them if not exist
+	for _, t := range tags {
+		// getting or creating the new tag
+		t.GetIDCreate(a.DB)
+		IDs = append(IDs, t.ID)
+	}
+
+	// parse route
+	vars := mux.Vars(r)
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// create media model by id to select from db
+	m := Media{ID: id}
+	// append the new tag if not present
+	if err := m.AddTags(a.DB, IDs); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
