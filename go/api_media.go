@@ -128,7 +128,7 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// success
-	RespondWithJSON(w, http.StatusOK, m)
+	a.GetMediaByID(w, r)
 }
 
 // DeleteMediaByID handles the webrequest for Media deletion
