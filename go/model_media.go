@@ -2,6 +2,7 @@ package primboard
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -19,7 +20,7 @@ type Media struct {
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
 	Creator         string               `json:"creator,omitempty" bson:"creator,omitempty"`
-	Tags            []primitive.ObjectID `json:"tags,omitempty" bson:"tags,omitempty"`
+	TagIDs          []primitive.ObjectID `json:"tagIDs,omitempty" bson:"tagIDs,omitempty"`
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
 	Groups          []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
@@ -28,8 +29,28 @@ type Media struct {
 	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
-	Users           []string             `json:"users,omitempty" bson:"users,omitempty"`
+	Tags            []string             `json:"tags,omitempty"`
+	Users           []string             `json:"users,omitempty"`
 }
+
+var project = bson.M{"$project": bson.M{
+	"_id":             1,
+	"sha1":            1,
+	"title":           1,
+	"description":     1,
+	"comments":        1,
+	"creator":         1,
+	"events":          1,
+	"groups":          1,
+	"timestamp":       1,
+	"timestampUpload": 1,
+	"url":             1,
+	"urlThumb":        1,
+	"type":            1,
+	"format":          1,
+	"tags":            "$tags.name",
+	"users":           1,
+}}
 
 // name of the mongo collection
 var mediaColName = "media"
@@ -49,7 +70,7 @@ func (m *Media) AddTag(db *mongo.Database, t primitive.ObjectID) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
-	update := bson.M{"$addToSet": bson.M{"tags": t}}
+	update := bson.M{"$addToSet": bson.M{"tagIDs": t}}
 	// options to return the update document
 	after := options.After
 	upsert := true
@@ -73,7 +94,7 @@ func (m *Media) AddTags(db *mongo.Database, tIDs []primitive.ObjectID) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
-	update := bson.M{"$addToSet": bson.M{"tags": bson.M{"$each": tIDs}}}
+	update := bson.M{"$addToSet": bson.M{"tagIDs": bson.M{"$each": tIDs}}}
 	// options to return the update document
 	after := options.After
 	upsert := true
@@ -107,7 +128,8 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 	}
 	// parse the order of
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	opts := options.Find().SetLimit(int64(query.Size)).SetSort(bson.M{"_id": query.ASC})
+
+	opts := options.Find().SetSort(bson.M{"_id": query.ASC}).SetLimit(int64(query.Size))
 	filters := []bson.M{}
 	// check if an previous page item was passed
 	if !query.After.IsZero() {
@@ -130,7 +152,7 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 	// check if filter have been specified
 	if len(query.Filter) > 0 {
 		var tags = parseTags(query.Filter)
-		filters = append(filters, bson.M{"tags": bson.M{"$elemMatch": bson.M{"name": bson.M{"$in": tags}}}})
+		filters = append(filters, bson.M{"tagIDs": bson.M{"$elemMatch": bson.M{"name": bson.M{"$in": tags}}}})
 	}
 
 	// create empty bson if no filter specified to prevent npe
@@ -145,9 +167,12 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 	var media []Media
 	cursor, err := col.Find(ctx, tmp, opts)
 	if err != nil {
+		log.Println(err)
 		return media, err
 	}
+
 	cursor.All(ctx, &media)
+	CloseContext()
 	return media, nil
 }
 
@@ -186,7 +211,17 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 			"foreignField": "username",
 			"as":           "users",
 		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "tag",
+			"localField":   "tagIDs",
+			"foreignField": "_id",
+			"as":           "tags",
+		}},
+		project,
 	}
+	// pipe := []bson.M{
+	// 	bson.M{"$project"}
+	// }
 	opts := options.Aggregate()
 	cursor, err := col.Aggregate(ctx, pipeline, opts)
 	if err != nil {
