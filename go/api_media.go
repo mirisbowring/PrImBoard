@@ -53,6 +53,13 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	c.AddMetadata(w.Header().Get("user"))
+	// verifiy integrity of comment
+	if err := c.IsValid(); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	// parse route
 	vars := mux.Vars(r)
 	id, _ := primitive.ObjectIDFromHex(vars["id"])
@@ -65,7 +72,7 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// success
-	RespondWithJSON(w, http.StatusOK, m)
+	a.GetMediaByID(w, r)
 }
 
 // AddTagByMediaID appends a tag to the specified media
@@ -95,7 +102,7 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// success
-	RespondWithJSON(w, http.StatusOK, m)
+	a.GetMediaByID(w, r)
 }
 
 // AddTagsByMediaID appends multiple tags to the specified media
