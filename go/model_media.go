@@ -3,7 +3,6 @@ package primboard
 import (
 	"errors"
 	"log"
-	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -128,7 +127,6 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 		return nil, err
 	}
 	// parse the order of
-	col, ctx := GetColCtx(mediaColName, db, 30)
 
 	opts := options.Find().SetSort(bson.M{"_id": query.ASC}).SetLimit(int64(query.Size))
 	filters := []bson.M{}
@@ -152,10 +150,10 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 	}
 	// check if filter have been specified
 	if len(query.Filter) > 0 {
-		var tags = parseTags(query.Filter)
-		filters = append(filters, bson.M{"tagIDs": bson.M{"$elemMatch": bson.M{"name": bson.M{"$in": tags}}}})
+		tags := parseTags(db, query.Filter)
+		filters = append(filters, bson.M{"tagIDs": bson.M{"$in": tags}})
 	}
-
+	log.Println("Called")
 	// create empty bson if no filter specified to prevent npe
 	var tmp bson.M
 	if len(filters) > 0 {
@@ -164,11 +162,14 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 		tmp = bson.M{}
 	}
 
+	col, ctx := GetColCtx(mediaColName, db, 30)
+
 	// fetch results
 	var media []Media
 	cursor, err := col.Find(ctx, tmp, opts)
 	if err != nil {
 		log.Println(err)
+		CloseContext()
 		return media, err
 	}
 
@@ -232,6 +233,7 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 	for cursor.Next(ctx) {
 		err := cursor.Decode(&m)
 		if err != nil {
+			CloseContext()
 			return err
 		}
 		found = true
@@ -313,9 +315,4 @@ func (m *Media) checkComments(user string) error {
 		m.Comments[i].Timestamp = int64(time.Now().Unix())
 	}
 	return nil
-}
-
-// parse the tag filter string into list (splitted at space)
-func parseTags(tagFilter string) []string {
-	return strings.Split(tagFilter, " ")
 }
