@@ -14,6 +14,13 @@ type User struct {
 	URLImage  string `json:"urlImage,omitempty" bson:"urlImage,omitempty"`
 }
 
+var UserProject = bson.M{
+	"username":  1,
+	"firstName": 1,
+	"lastName":  1,
+	"urlImage":  1,
+}
+
 // name of the mongo collection
 var userColName = "user"
 

@@ -30,10 +30,11 @@ type Media struct {
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
 	Tags            []string             `json:"tags,omitempty"`
-	Users           []string             `json:"users,omitempty"`
+	Users           []User               `json:"users,omitempty"`
 }
 
-var project = bson.M{"$project": bson.M{
+//MediaProject is a bson representation of the $project aggregation for mongodb
+var MediaProject = bson.M{
 	"_id":             1,
 	"sha1":            1,
 	"title":           1,
@@ -49,8 +50,8 @@ var project = bson.M{"$project": bson.M{
 	"type":            1,
 	"format":          1,
 	"tags":            "$tags.name",
-	"users":           1,
-}}
+	"users":           UserProject,
+}
 
 // name of the mongo collection
 var mediaColName = "media"
@@ -204,20 +205,20 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	// filter := bson.M{"_id": m.ID}
 	pipeline := []bson.M{
-		bson.M{"$match": bson.M{"_id": m.ID}},
-		bson.M{"$lookup": bson.M{
+		{"$match": bson.M{"_id": m.ID}},
+		{"$lookup": bson.M{
 			"from":         "user",
 			"localField":   "comments.username",
 			"foreignField": "username",
 			"as":           "users",
 		}},
-		bson.M{"$lookup": bson.M{
+		{"$lookup": bson.M{
 			"from":         "tag",
 			"localField":   "tagIDs",
 			"foreignField": "_id",
 			"as":           "tags",
 		}},
-		project,
+		{"$project": MediaProject},
 	}
 	// pipe := []bson.M{
 	// 	bson.M{"$project"}
