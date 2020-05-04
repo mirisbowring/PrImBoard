@@ -123,6 +123,7 @@ func GetTagsByKeyword(db *mongo.Database, keyword string, limit int64) ([]Tag, e
 	var tags []Tag
 	cursor, err := col.Find(ctx, filter, options)
 	if err = cursor.All(ctx, &tags); err != nil {
+		CloseContext()
 		return nil, err
 	}
 
@@ -154,4 +155,32 @@ func (t *Tag) UpdateTag(db *mongo.Database, ut Tag) (*mongo.UpdateResult, error)
 	result, err := col.UpdateOne(ctx, filter, update)
 	CloseContext()
 	return result, err
+}
+
+// parse the tag filter string into list (splitted at space)
+func parseTags(db *mongo.Database, tagFilter string) []primitive.ObjectID {
+	col, ctx := GetColCtx(tColName, db, 30)
+
+	var tagIDs []primitive.ObjectID
+
+	tags := strings.Split(tagFilter, " ")
+	filter := bson.M{"name": bson.M{"$in": tags}}
+
+	cursor, err := col.Find(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		CloseContext()
+		return tagIDs
+	}
+	// iterate over cursor and append every id found
+	for cursor.Next(ctx) {
+		var tag Tag
+		if err := cursor.Decode(&tag); err != nil {
+			log.Println(err)
+			continue
+		}
+		tagIDs = append(tagIDs, tag.ID)
+	}
+	CloseContext()
+	return tagIDs
 }
