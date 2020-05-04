@@ -153,7 +153,7 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 		tags := parseTags(db, query.Filter)
 		filters = append(filters, bson.M{"tagIDs": bson.M{"$in": tags}})
 	}
-	log.Println("Called")
+
 	// create empty bson if no filter specified to prevent npe
 	var tmp bson.M
 	if len(filters) > 0 {
