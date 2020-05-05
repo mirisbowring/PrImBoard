@@ -25,7 +25,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.GetMediaByID), false)).Methods("GET")
 	// a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.UpdateMediaByID), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/media/{id}/comment", a.Authenticate(http.HandlerFunc(a.AddCommentByMediaID), false)).Methods("POST")
-	a.Router.Handle("/api/v1/media/{id}/createdon", a.Authenticate(http.HandlerFunc(a.AddCreatedOnByMediaID), false)).Methods("POST")
+	a.Router.Handle("/api/v1/media/{id}/timestamp", a.Authenticate(http.HandlerFunc(a.AddTimestampByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}/description", a.Authenticate(http.HandlerFunc(a.AddDescriptionByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}/tag", a.Authenticate(http.HandlerFunc(a.AddTagByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}/tags", a.Authenticate(http.HandlerFunc(a.AddTagsByMediaID), false)).Methods("POST")

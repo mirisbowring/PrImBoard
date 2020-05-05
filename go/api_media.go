@@ -75,45 +75,6 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 	a.GetMediaByID(w, r)
 }
 
-//AddCreatedOnByMediaID adds the creation date to the media
-func (a *App) AddCreatedOnByMediaID(w http.ResponseWriter, r *http.Request) {
-	var m Media
-	// decode body into tag model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&m); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload!")
-		return
-	}
-
-	// check if timestamp is valid
-	if m.Timestamp == 0 {
-		RespondWithError(w, http.StatusBadRequest, "Creation date cannot be empty!")
-		return
-	}
-
-	// verify that the creation date is not in the future
-	if time.Unix(m.Timestamp, 0).UTC().After(time.Now().UTC()) {
-		RespondWithError(w, http.StatusBadRequest, "Creation date cannot be the future!")
-		return
-	}
-
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
-	// create media model by id to select from db
-	media := Media{ID: id}
-	// add the timestamp to the database document
-	media.Timestamp = m.Timestamp
-	// append the new tag if not present
-	if err := m.Save(a.DB); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
-		return
-	}
-	// success
-	a.GetMediaByID(w, r)
-}
-
 //AddDescriptionByMediaID adds the description to the media
 func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 	var m Media
@@ -204,6 +165,45 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	m := Media{ID: id}
 	// append the new tag if not present
 	if err := m.AddTags(a.DB, IDs); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		return
+	}
+	// success
+	a.GetMediaByID(w, r)
+}
+
+//AddTimestampByMediaID adds the creation date to the media
+func (a *App) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
+	var m Media
+	// decode body into tag model
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		// an decode error occured
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload!")
+		return
+	}
+
+	// check if timestamp is valid
+	if m.Timestamp == 0 {
+		RespondWithError(w, http.StatusBadRequest, "Creation date cannot be empty!")
+		return
+	}
+
+	// verify that the creation date is not in the future
+	if time.Unix(m.Timestamp, 0).UTC().After(time.Now().UTC()) {
+		RespondWithError(w, http.StatusBadRequest, "Creation date cannot be the future!")
+		return
+	}
+
+	// parse route
+	vars := mux.Vars(r)
+	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// create media model by id to select from db
+	media := Media{ID: id}
+	// add the timestamp to the database document
+	media.Timestamp = m.Timestamp
+	// append the new tag if not present
+	if err := m.Save(a.DB); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
