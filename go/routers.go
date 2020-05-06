@@ -48,6 +48,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/user/{username}", a.Authenticate(http.HandlerFunc(a.UpdateUser), false)).Methods("PUT")
 	// usergroup
 	a.Router.Handle("/api/v1/usergroup", a.Authenticate(http.HandlerFunc(a.AddUserGroup), false)).Methods("POST")
+	a.Router.Handle("/api/v1/usergroups", a.Authenticate(http.HandlerFunc(a.GetUserGroups), false)).Methods("GET")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.DeleteUserGroupByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.GetUserGroupByID), false)).Methods("GET")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.UpdateUserGroupByID), false)).Methods("PUT")

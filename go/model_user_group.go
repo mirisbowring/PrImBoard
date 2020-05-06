@@ -60,6 +60,20 @@ func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
 	return err
 }
 
+// GetUserGroups returns all groups the user is part of
+func GetUserGroups(db *mongo.Database, user string) ([]UserGroup, error) {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	filter := bson.M{"users": user}
+	var groups []UserGroup
+
+	cursor, err := col.Find(ctx, filter)
+	if err != nil {
+		return groups, err
+	}
+	cursor.All(ctx, &groups)
+	return groups, nil
+}
+
 // Save writes changes, made to the instance itself, to the database and
 // overrides the instance with the return value from the database
 func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {

@@ -155,6 +155,20 @@ func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, ug)
 }
 
+// GetUserGroups returns all groups, the current user is assigned to
+func (a *App) GetUserGroups(w http.ResponseWriter, r *http.Request) {
+	// receive current user
+	username := w.Header().Get("user")
+	// read groups from db
+	groups, err := GetUserGroups(a.DB, username)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// success
+	RespondWithJSON(w, http.StatusOK, groups)
+}
+
 // RemoveUserFromUserGroupByID adds a User to the specified usergroup
 func (a *App) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	var u User
