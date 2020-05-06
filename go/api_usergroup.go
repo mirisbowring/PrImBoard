@@ -155,6 +155,74 @@ func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, ug)
 }
 
+// RemoveUserFromUserGroupByID adds a User to the specified usergroup
+func (a *App) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.Request) {
+	var u User
+	// decode
+	u, status := DecodeUserRequest(w, r, u)
+	if status != 0 {
+		return
+	}
+
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
+
+	// init usergroup
+	ug := UserGroup{ID: id}
+	if ug.GetUserGroupAPI(w, a.DB) != 0 {
+		return
+	}
+
+	// remove username from slice
+	ug.Users = RemoveString(ug.Users, u.Username)
+
+	if err := ug.Save(a.DB, false); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// success
+	a.GetUserGroupByID(w, r)
+}
+
+// RemoveUsersFromUserGroupByID adds a User to the specified usergroup
+func (a *App) RemoveUsersFromUserGroupByID(w http.ResponseWriter, r *http.Request) {
+	var u []User
+	// decode
+	u, status := DecodeUsersRequest(w, r, u)
+	if status != 0 {
+		return
+	}
+
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
+
+	// init usergroup
+	ug := UserGroup{ID: id}
+	if ug.GetUserGroupAPI(w, a.DB) != 0 {
+		return
+	}
+
+	// remove usernames from slice
+	for _, user := range u {
+		ug.Users = RemoveString(ug.Users, user.Username)
+	}
+
+	if err := ug.Save(a.DB, false); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// success
+	a.GetUserGroupByID(w, r)
+}
+
 // UpdateUserGroupByID handles the webrequest for updating the usergroup with
 // the passed request body
 func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {

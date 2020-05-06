@@ -194,3 +194,13 @@ func UniqueStrings(slice []string) []string {
 	}
 	return list
 }
+
+// RemoveString removes a given string from a given slice
+func RemoveString(s []string, r string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
+}
