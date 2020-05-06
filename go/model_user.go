@@ -1,8 +1,8 @@
 package primboard
 
 import (
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"gopkg.in/mgo.v2/bson"
 )
 
 // User contains all information about the user
@@ -14,6 +14,7 @@ type User struct {
 	URLImage  string `json:"urlImage,omitempty" bson:"urlImage,omitempty"`
 }
 
+//UserProject is a bson representation of the user object
 var UserProject = bson.M{
 	"username":  1,
 	"firstName": 1,
