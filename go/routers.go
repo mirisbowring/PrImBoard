@@ -51,6 +51,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.DeleteUserGroupByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.GetUserGroupByID), false)).Methods("GET")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.UpdateUserGroupByID), false)).Methods("PUT")
+	a.Router.Handle("/api/v1/usergroup/{id}/user", a.Authenticate(http.HandlerFunc(a.AddUserToUserGroupByID), false)).Methods("POST")
 }
 
 // Index controller

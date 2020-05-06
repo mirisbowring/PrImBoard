@@ -171,3 +171,26 @@ func modelCollection(model string, db *mongo.Database) *mongo.Collection {
 func GetColCtx(model string, db *mongo.Database, duration time.Duration) (*mongo.Collection, context.Context) {
 	return modelCollection(model, db), DBContext(duration)
 }
+
+// Find iterates over the slice and returns the position of the element if found
+func Find(slice []string, val string) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+// UniqueStrings removes all duplicates from a string slice and returns the result
+func UniqueStrings(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}

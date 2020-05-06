@@ -1,9 +1,10 @@
 package main
 
 import (
-	sw "github.com/mirisbowring/PrImBoard/go"
 	"log"
 	"strconv"
+
+	sw "github.com/mirisbowring/PrImBoard/go"
 )
 
 func main() {

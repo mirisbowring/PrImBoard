@@ -42,6 +42,24 @@ func (u *User) DeleteUser(db *mongo.Database) (*mongo.DeleteResult, error) {
 	return result, err
 }
 
+// Exists checks if the user can be selected from the database
+// Assumes false if any error occurs
+func (u *User) Exists(db *mongo.Database) bool {
+	if err := u.GetUser(db); err != nil {
+		return false
+	}
+	return true
+}
+
+// UsersExist checks if all users in the slice can be selected from the database
+// Assumes false if any error occurs
+func UsersExist(db *mongo.Database, u []User) bool {
+	if _, err := GetUsers(db, u); err != nil {
+		return false
+	}
+	return true
+}
+
 //GetUser returns the specified entry from the mongodb
 func (u *User) GetUser(db *mongo.Database) error {
 	col, ctx := GetColCtx(userColName, db, 30)
@@ -49,6 +67,22 @@ func (u *User) GetUser(db *mongo.Database) error {
 	err := col.FindOne(ctx, filter).Decode(&u)
 	CloseContext()
 	return err
+}
+
+// GetUsers returns a sclice of the specified users from the database
+func GetUsers(db *mongo.Database, u []User) ([]User, error) {
+	col, ctx := GetColCtx(userColName, db, 30)
+	filter := bson.M{"username": bson.M{"$in": u}}
+
+	var users []User
+	cursor, err := col.Find(ctx, filter)
+	if err != nil {
+		CloseContext()
+		return users, err
+	}
+	cursor.All(ctx, &users)
+	CloseContext()
+	return users, nil
 }
 
 // UpdateUser updates the record with the passed one

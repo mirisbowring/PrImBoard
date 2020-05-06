@@ -29,11 +29,13 @@ var UserGroupProject = bson.M{
 var ugColName = "usergroup"
 
 // AddUserGroup creates the model in the mongodb
-func (ug *UserGroup) AddUserGroup(db *mongo.Database) (*mongo.InsertOneResult, error) {
+func (ug *UserGroup) AddUserGroup(db *mongo.Database, skipVerify bool) (*mongo.InsertOneResult, error) {
 	col, ctx := GetColCtx(ugColName, db, 30)
-	// verify that the fields are valid
-	if err := ug.Verify(db); err != nil {
-		return nil, err
+	if !skipVerify {
+		// verify that the fields are valid
+		if err := ug.Verify(db); err != nil {
+			return nil, err
+		}
 	}
 	result, err := col.InsertOne(ctx, ug)
 	CloseContext()
@@ -60,11 +62,13 @@ func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
 
 // Save writes changes, made to the instance itself, to the database and
 // overrides the instance with the return value from the database
-func (ug *UserGroup) Save(db *mongo.Database) error {
+func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
-	// verify that the fields are valid
-	if err := ug.Verify(db); err != nil {
-		return err
+	if !skipVerify {
+		// verify that the fields are valid
+		if err := ug.Verify(db); err != nil {
+			return err
+		}
 	}
 	filter := bson.M{"_id": ug.ID}
 	update := bson.M{"$set": ug}
@@ -85,15 +89,17 @@ func (ug *UserGroup) Save(db *mongo.Database) error {
 }
 
 // UpdateUserGroup updates the record with the passed one
-func (ug *UserGroup) UpdateUserGroup(db *mongo.Database, uug UserGroup) (*mongo.UpdateResult, error) {
+func (ug *UserGroup) UpdateUserGroup(db *mongo.Database, uug UserGroup, skipVerify bool) (*mongo.UpdateResult, error) {
 	col, ctx := GetColCtx(ugColName, db, 30)
-	// verify that the fields are valid
-	if err := ug.Verify(db); err != nil {
-		return nil, err
+	if !skipVerify {
+		// verify that the fields are valid
+		if err := uug.Verify(db); err != nil {
+			return nil, err
+		}
 	}
-	// verify that the IDs are matching
+	// ID should not be changes
 	if ug.ID != uug.ID {
-		return nil, errors.New("usergroup ids do not match")
+		uug.ID = ug.ID
 	}
 	filter := bson.M{"_id": ug.ID}
 	update := bson.M{"$set": uug}

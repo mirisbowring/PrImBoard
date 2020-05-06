@@ -1,7 +1,6 @@
 package primboard
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,14 +14,11 @@ import (
 // AddMedia handles the webrequest for Media creation
 func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	var m Media
-	// decode request into model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&m); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	m, status := DecodeMediaRequest(w, r, m)
+	if status != 0 {
 		return
 	}
-	defer r.Body.Close()
+
 	// url and type are mandatory
 	if m.URL == "" || m.Type == "" {
 		RespondWithError(w, http.StatusBadRequest, "URL and type cannot be empty")
@@ -45,11 +41,8 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 // AddCommentByMediaID appends a comment to the specified media
 func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 	var c Comment
-	// decode body into comment model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&c); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	c, status := DecodeCommentRequest(w, r, c)
+	if status != 0 {
 		return
 	}
 
@@ -60,9 +53,11 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create media model by id to select from db
 	m := Media{ID: id}
 	// append the new comment
@@ -78,11 +73,8 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 //AddDescriptionByMediaID adds the description to the media
 func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 	var m Media
-	// decode body into tag model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&m); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload!")
+	m, status := DecodeMediaRequest(w, r, m)
+	if status != 0 {
 		return
 	}
 
@@ -93,9 +85,11 @@ func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create media model by id to select from db
 	media := Media{ID: id}
 	// add the title to the database document
@@ -113,11 +107,8 @@ func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 // creates a new tag if not in the tag document
 func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 	var t Tag
-	// decode body into tag model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&t); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	t, status := DecodeTagRequest(w, r, t)
+	if status != 0 {
 		return
 	}
 
@@ -125,9 +116,11 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusInternalServerError, "Failed to fetch tag id")
 	}
 
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create media model by id to select from db
 	m := Media{ID: id}
 	// append the new tag if not present
@@ -144,11 +137,8 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	var tags []Tag
 	var IDs []primitive.ObjectID
-	// decode body into tag model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&tags); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+	tags, status := DecodeTagsRequest(w, r, tags)
+	if status != 0 {
 		return
 	}
 	// iterating over all tags and adding them if not exist
@@ -158,9 +148,11 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 		IDs = append(IDs, t.ID)
 	}
 
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create media model by id to select from db
 	m := Media{ID: id}
 	// append the new tag if not present
@@ -175,11 +167,8 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 //AddTimestampByMediaID adds the creation date to the media
 func (a *App) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
 	var m Media
-	// decode body into tag model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&m); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload!")
+	m, status := DecodeMediaRequest(w, r, m)
+	if status != 0 {
 		return
 	}
 
@@ -195,9 +184,11 @@ func (a *App) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create media model by id to select from db
 	media := Media{ID: id}
 	// add the timestamp to the database document
@@ -214,11 +205,8 @@ func (a *App) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
 //AddTitleByMediaID adds the title to the media
 func (a *App) AddTitleByMediaID(w http.ResponseWriter, r *http.Request) {
 	var m Media
-	// decode body into tag model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&m); err != nil {
-		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload!")
+	m, status := DecodeMediaRequest(w, r, m)
+	if status != 0 {
 		return
 	}
 
@@ -229,9 +217,11 @@ func (a *App) AddTitleByMediaID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// parse route
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create media model by id to select from db
 	media := Media{ID: id}
 	// add the title to the database document
@@ -247,9 +237,11 @@ func (a *App) AddTitleByMediaID(w http.ResponseWriter, r *http.Request) {
 
 // DeleteMediaByID handles the webrequest for Media deletion
 func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create model by passed id
 	m := Media{ID: id}
 	// try to delete model
@@ -335,9 +327,11 @@ func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 
 // GetMediaByID handles the webrequest for receiving Media model by id
 func (a *App) GetMediaByID(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create model by passed id
 	m := Media{ID: id}
 	// try to select media
@@ -394,10 +388,8 @@ func (a *App) UpdateMediaByHash(w http.ResponseWriter, r *http.Request) {
 	id, _ := primitive.ObjectIDFromHex(parts[1])
 	// store new model in tmp object
 	var um Media
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&um); err != nil {
-		// error occured during encoding
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+	um, status := DecodeMediaRequest(w, r, um)
+	if status != 0 {
 		return
 	}
 	if err := um.checkComments(w.Header().Get("user")); err != nil {
@@ -420,15 +412,15 @@ func (a *App) UpdateMediaByHash(w http.ResponseWriter, r *http.Request) {
 // UpdateMediaByID handles the webrequest for updating the Media with the passed
 // request body
 func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// store new model in tmp object
 	var um Media
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&um); err != nil {
-		// error occured during encoding
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+	um, status := DecodeMediaRequest(w, r, um)
+	if status != 0 {
 		return
 	}
 	if err := um.checkComments(w.Header().Get("user")); err != nil {

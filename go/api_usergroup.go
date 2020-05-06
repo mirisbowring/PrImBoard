@@ -2,11 +2,7 @@ package primboard
 
 import (
 	"encoding/json"
-	"github.com/gorilla/mux"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
-	"time"
 )
 
 // AddUserGroup handles the webrequest for usergroup creation
@@ -20,15 +16,15 @@ func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	// title is mandatory
-	if ug.Title == "" {
-		RespondWithError(w, http.StatusBadRequest, "Title cannot be empty")
+
+	// verify the usergroup
+	if err := ug.Verify(a.DB); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// setting creation timestamp
-	ug.TimestampCreation = int64(time.Now().Unix())
-	// try to insert model into db
-	result, err := ug.AddUserGroup(a.DB)
+
+	// try to insert model into db skipVerify because already verified
+	result, err := ug.AddUserGroup(a.DB, true)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -37,11 +33,100 @@ func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusCreated, result)
 }
 
+// AddUserToUserGroupByID adds a User to the specified usergroup
+func (a *App) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Request) {
+	var u User
+	// decode
+	u, status := DecodeUserRequest(w, r, u)
+	if status != 0 {
+		return
+	}
+	// check if user does Exists
+	if !u.Exists(a.DB) {
+		// user does not exist
+		RespondWithError(w, http.StatusBadRequest, "Could not add user!")
+		return
+	}
+
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
+
+	// init usergroup
+	ug := UserGroup{ID: id}
+	if ug.GetUserGroupAPI(w, a.DB) != 0 {
+		return
+	}
+
+	// check if user already in group
+	if _, found := Find(ug.Users, u.Username); found {
+		RespondWithError(w, http.StatusFound, "User already added to usergroup!")
+		return
+	}
+
+	//append user and save object to db
+	ug.Users = append(ug.Users, u.Username)
+	//skipVerify because we manually added a single username and checked uniqueness
+	if err := ug.Save(a.DB, true); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// success
+	a.GetUserGroupByID(w, r)
+}
+
+// AddUsersToUserGroupByID adds a User to the specified usergroup
+func (a *App) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
+	var u []User
+	// decode
+	u, status := DecodeUsersRequest(w, r, u)
+	if status != 0 {
+		return
+	}
+
+	// check if user does Exists
+	if !UsersExist(a.DB, u) {
+		// user does not exist
+		RespondWithError(w, http.StatusBadRequest, "Could not add users!")
+		return
+	}
+
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
+
+	// init usergroup
+	ug := UserGroup{ID: id}
+	if ug.GetUserGroupAPI(w, a.DB) != 0 {
+		return
+	}
+
+	// check adding all users and make slice unique
+	for _, user := range u {
+		ug.Users = append(ug.Users, user.Username)
+	}
+	ug.Users = UniqueStrings(ug.Users)
+
+	//skipVerify because we manually added a single username and checked uniqueness
+	if err := ug.Save(a.DB, true); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// success
+	a.GetUserGroupByID(w, r)
+}
+
 // DeleteUserGroupByID handles the webrequest for usergroup deletion
 func (a *App) DeleteUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create model by passed id
 	ug := UserGroup{ID: id}
 	// try to delete model
@@ -56,21 +141,14 @@ func (a *App) DeleteUserGroupByID(w http.ResponseWriter, r *http.Request) {
 
 //GetUserGroupByID handles the webrequest for receiving usergroup model by id
 func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// create model by passed id
 	ug := UserGroup{ID: id}
-	// try to select user
-	if err := ug.GetUserGroup(a.DB); err != nil {
-		switch err {
-		case mongo.ErrNoDocuments:
-			// model not found
-			RespondWithError(w, http.StatusNotFound, "Usergroup not found")
-		default:
-			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
-		}
+	if ug.GetUserGroupAPI(w, a.DB) != 0 {
 		return
 	}
 	// could select user from mongo
@@ -80,9 +158,11 @@ func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 // UpdateUserGroupByID handles the webrequest for updating the usergroup with
 // the passed request body
 func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	id, _ := primitive.ObjectIDFromHex(vars["id"])
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
 	// store new model in tmp object
 	var uug UserGroup
 	decoder := json.NewDecoder(r.Body)
@@ -92,9 +172,16 @@ func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+
+	// verify the usergroup
+	if err := uug.Verify(a.DB); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	// trying to update model with requested body
 	ug := UserGroup{ID: id}
-	result, err := ug.UpdateUserGroup(a.DB, uug)
+	result, err := ug.UpdateUserGroup(a.DB, uug, true)
 	if err != nil {
 		// Error occured during update
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
