@@ -184,15 +184,16 @@ func (a *App) GetUserGroups(w http.ResponseWriter, r *http.Request) {
 // RemoveUserFromUserGroupByID adds a User to the specified usergroup
 func (a *App) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	var u User
-	// decode
-	u, status := DecodeUserRequest(w, r, u)
-	if status != 0 {
-		return
-	}
 
 	// parse ID from route
 	id := parseID(w, r)
 	if id.IsZero() {
+		return
+	}
+
+	// parse username from route
+	u, status := parseUsername(w, r)
+	if status != 0 {
 		return
 	}
 
