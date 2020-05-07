@@ -68,16 +68,18 @@ func GetUserGroups(db *mongo.Database, user string) ([]UserGroup, error) {
 
 	cursor, err := col.Find(ctx, filter)
 	if err != nil {
+		CloseContext()
 		return groups, err
 	}
 	cursor.All(ctx, &groups)
+	CloseContext()
 	return groups, nil
 }
 
 // Save writes changes, made to the instance itself, to the database and
 // overrides the instance with the return value from the database
 func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	col, ctx := GetColCtx(ugColName, db, 30)
 	if !skipVerify {
 		// verify that the fields are valid
 		if err := ug.Verify(db); err != nil {
