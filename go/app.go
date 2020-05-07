@@ -56,6 +56,7 @@ func (a *App) Run(addr string) {
 				),
 				handlers.AllowedMethods(
 					[]string{
+						"DELETE",
 						"GET",
 						"POST",
 						"PUT",
