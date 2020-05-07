@@ -60,6 +60,12 @@ func (a *App) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// verify that user is owner
+	if w.Header().Get("user") != ug.Creator {
+		RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
+		return
+	}
+
 	// check if user already in group
 	if _, found := Find(ug.Users, u.Username); found {
 		RespondWithError(w, http.StatusFound, "User already added to usergroup!")
@@ -102,6 +108,12 @@ func (a *App) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// init usergroup
 	ug := UserGroup{ID: id}
 	if ug.GetUserGroupAPI(w, a.DB) != 0 {
+		return
+	}
+
+	// verify that user is owner
+	if w.Header().Get("user") != ug.Creator {
+		RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
 		return
 	}
 
