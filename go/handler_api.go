@@ -19,3 +19,15 @@ func parseID(w http.ResponseWriter, r *http.Request) primitive.ObjectID {
 	}
 	return id
 }
+
+// parseUsername parses the username from the route and returns is
+// stats 0 -> ok || status 1 -> error
+func parseUsername(w http.ResponseWriter, r *http.Request) (User, int) {
+	vars := mux.Vars(r)
+	user := User{Username: vars["username"]}
+	if user.Username == "" {
+		RespondWithError(w, http.StatusBadRequest, "User was not specified!")
+		return user, 1
+	}
+	return user, 0
+}
