@@ -38,6 +38,7 @@ type Config struct {
 	TagPreviewLimit      int64    `json:"tag_preview_limit"`
 	SessionRotation      bool     `json:"session_rotation"`
 	DefaultMediaPageSize int      `json:"default_media_page_size"`
+	InviteValidity       int      `json:"invite_validity"`
 }
 
 // Run starts the application on the passed address with the inherited router

@@ -24,6 +24,12 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
 		return
 	}
+	// verify invite
+	i := Invite{Token: u.Token}
+	if err := i.Invalidate(a.DB); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	// hash password
 	u.Password = HashPassword(u.Password)
 	// try to insert model into db

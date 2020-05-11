@@ -12,6 +12,7 @@ type User struct {
 	LastName  string `json:"lastName,omitempty" bson:"lastName,omitempty"`
 	Password  string `json:"password,omitempty" bson:"password,omitempty"`
 	URLImage  string `json:"urlImage,omitempty" bson:"urlImage,omitempty"`
+	Token     string `json:"token,omitempty"`
 }
 
 //UserProject is a bson representation of the user object

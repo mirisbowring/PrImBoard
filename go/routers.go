@@ -41,6 +41,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/tags/{name}", a.Authenticate(http.HandlerFunc(a.GetTagsByName), false)).Methods("GET")
 	// user
 	a.Router.Handle("/api/v1/user", a.Authenticate(http.HandlerFunc(a.CreateUser), false)).Methods("POST")
+	a.Router.Handle("/api/v1/user/invite", a.Authenticate(http.HandlerFunc(a.GenerateInvite), false)).Methods("GET")
 	a.Router.Handle("/api/v1/user/{username}", a.Authenticate(http.HandlerFunc(a.DeleteUser), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/user/{username}", a.Authenticate(http.HandlerFunc(a.GetUserByUsername), false)).Methods("GET")
 	a.Router.HandleFunc("/api/v1/login", a.LoginUser).Methods("POST")
