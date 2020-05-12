@@ -28,6 +28,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/media/{id}/description", a.Authenticate(http.HandlerFunc(a.AddDescriptionByMediaID), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/media/{id}/tag", a.Authenticate(http.HandlerFunc(a.AddTagByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}/tags", a.Authenticate(http.HandlerFunc(a.AddTagsByMediaID), false)).Methods("POST")
+	a.Router.Handle("/api/v1/media/{id}/usergroups", a.Authenticate(http.HandlerFunc(a.AddUserGroupsByMediaID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}/timestamp", a.Authenticate(http.HandlerFunc(a.AddTimestampByMediaID), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/media/{id}/title", a.Authenticate(http.HandlerFunc(a.AddTitleByMediaID), false)).Methods("PUT")
 	a.Router.Handle("/api/v1/mediaByHash/{ipfs_id}", a.Authenticate(http.HandlerFunc(a.UpdateMediaByHash), false)).Methods("PUT")
@@ -50,6 +51,7 @@ func (a *App) InitializeRoutes() {
 	// usergroup
 	a.Router.Handle("/api/v1/usergroup", a.Authenticate(http.HandlerFunc(a.AddUserGroup), false)).Methods("POST")
 	a.Router.Handle("/api/v1/usergroups", a.Authenticate(http.HandlerFunc(a.GetUserGroups), false)).Methods("GET")
+	a.Router.Handle("/api/v1/usergroups/{name}", a.Authenticate(http.HandlerFunc(a.GetUserGroupsByName), false)).Methods("GET")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.DeleteUserGroupByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.GetUserGroupByID), false)).Methods("GET")
 	a.Router.Handle("/api/v1/usergroup/{id}", a.Authenticate(http.HandlerFunc(a.UpdateUserGroupByID), false)).Methods("PUT")

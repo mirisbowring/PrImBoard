@@ -7,15 +7,17 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Invite represents the database entry for the tokens
 type Invite struct {
-	Token string `json:"token,omitempty" bson:"token,omitempty"`
-	Until int64  `json:"until,omitempty" bson:"until,omitempty"`
-	Used  bool   `json:"used,omitempty" bson:"used,omitempty"`
+	ID    primitive.ObjectID `json:"id,omitempty" bson:"_id,omitempty"`
+	Token string             `json:"token,omitempty" bson:"token,omitempty"`
+	Until int64              `json:"until,omitempty" bson:"until,omitempty"`
+	Used  bool               `json:"used,omitempty" bson:"used,omitempty"`
 }
 
 var inviteColName = "invite"
@@ -92,6 +94,15 @@ func (i *Invite) Invalidate(db *mongo.Database) error {
 func (i *Invite) FindToken(db *mongo.Database) error {
 	col, ctx := GetColCtx(inviteColName, db, 30)
 	filter := bson.M{"token": i.Token}
+	err := col.FindOne(ctx, filter).Decode(&i)
+	CloseContext()
+	return err
+}
+
+// FindID selects an Invite with the given ID
+func (i *Invite) FindID(db *mongo.Database) error {
+	col, ctx := GetColCtx(inviteColName, db, 30)
+	filter := bson.M{"_id": i.ID}
 	err := col.FindOne(ctx, filter).Decode(&i)
 	CloseContext()
 	return err

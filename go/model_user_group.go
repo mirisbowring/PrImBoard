@@ -76,6 +76,43 @@ func GetUserGroups(db *mongo.Database, user string) ([]UserGroup, error) {
 	return groups, nil
 }
 
+// GetUserGroupsByIDs returns a slice of usergroups, that are matching the given id slice
+func GetUserGroupsByIDs(db *mongo.Database, ids []primitive.ObjectID) ([]UserGroup, error) {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	filter := bson.M{"_id": bson.M{"$in": ids}}
+
+	var groups []UserGroup
+	cursor, err := col.Find(ctx, filter)
+	if err != nil {
+		CloseContext()
+		return groups, err
+	}
+	cursor.All(ctx, &groups)
+	CloseContext()
+	return groups, nil
+}
+
+// GetUserGroupsByKeyword returns the topmost groups that are starting with the keyword
+func GetUserGroupsByKeyword(db *mongo.Database, keyword string, limit int64) ([]UserGroup, error) {
+	col, ctx := GetColCtx(ugColName, db, 30)
+	// define options (sort, limit, ...)
+	options := options.Find()
+	options.SetSort(bson.M{"title": 1}).SetLimit(limit)
+	// define filter
+	filter := bson.M{
+		"title": primitive.Regex{Pattern: "^" + keyword, Options: "i"},
+	}
+	// execute filter query
+	var groups []UserGroup
+	cursor, err := col.Find(ctx, filter, options)
+	if err = cursor.All(ctx, &groups); err != nil {
+		CloseContext()
+		return nil, err
+	}
+	CloseContext()
+	return groups, nil
+}
+
 // Save writes changes, made to the instance itself, to the database and
 // overrides the instance with the return value from the database
 func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {

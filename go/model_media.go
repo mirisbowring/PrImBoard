@@ -21,7 +21,7 @@ type Media struct {
 	Creator         string               `json:"creator,omitempty" bson:"creator,omitempty"`
 	TagIDs          []primitive.ObjectID `json:"tagIDs,omitempty" bson:"tagIDs,omitempty"`
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
-	Groups          []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
+	GroupIDs        []primitive.ObjectID `json:"groupIDs,omitempty" bson:"groupIDs,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
 	TimestampUpload int64                `json:"timestampUpload,omitempty" bson:"timestampUpload,omitempty"`
 	URL             string               `json:"url,omitempty" bson:"url,omitempty"`
@@ -30,6 +30,7 @@ type Media struct {
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
 	Tags            []string             `json:"tags,omitempty"`
 	Users           []User               `json:"users,omitempty"`
+	Groups          []UserGroup          `json:"groups,omitempty"`
 }
 
 //MediaProject is a bson representation of the $project aggregation for mongodb
@@ -41,7 +42,6 @@ var MediaProject = bson.M{
 	"comments":        1,
 	"creator":         1,
 	"events":          1,
-	"groups":          1,
 	"timestamp":       1,
 	"timestampUpload": 1,
 	"url":             1,
@@ -50,6 +50,7 @@ var MediaProject = bson.M{
 	"format":          1,
 	"tags":            "$tags.name",
 	"users":           UserProject,
+	"groups":          UserGroupProject,
 }
 
 // name of the mongo collection
@@ -95,6 +96,30 @@ func (m *Media) AddTags(db *mongo.Database, tIDs []primitive.ObjectID) error {
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
 	update := bson.M{"$addToSet": bson.M{"tagIDs": bson.M{"$each": tIDs}}}
+	// options to return the update document
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// Execute query
+	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
+	CloseContext()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddUserGroups adds an array of primitive.ObjectID (of a usergroup) to the
+// mapped usergroup set (ignores duplicates) Overrides the current model
+// instance
+func (m *Media) AddUserGroups(db *mongo.Database, ugIDs []primitive.ObjectID) error {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	filter := bson.M{"_id": m.ID}
+	// specify the usergroup array to be handled as set
+	update := bson.M{"$addToSet": bson.M{"groupIDs": bson.M{"$each": ugIDs}}}
 	// options to return the update document
 	after := options.After
 	upsert := true
@@ -218,6 +243,12 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 			"localField":   "tagIDs",
 			"foreignField": "_id",
 			"as":           "tags",
+		}},
+		{"$lookup": bson.M{
+			"from":         "usergroup",
+			"localField":   "groupIDs",
+			"foreignField": "_id",
+			"as":           "groups",
 		}},
 		{"$project": MediaProject},
 	}

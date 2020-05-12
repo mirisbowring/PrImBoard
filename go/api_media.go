@@ -1,6 +1,7 @@
 package primboard
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -157,6 +158,59 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	m := Media{ID: id}
 	// append the new tag if not present
 	if err := m.AddTags(a.DB, IDs); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		return
+	}
+	// success
+	a.GetMediaByID(w, r)
+}
+
+// AddUserGroupsByMediaID appends multiple tags to the specified media
+// creates a new tag if not in the tag document
+func (a *App) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
+	var groups []UserGroup
+	var IDs []primitive.ObjectID
+	groups, status := DecodeUserGroupsRequest(w, r, groups)
+	if status != 0 {
+		return
+	}
+	// creating id slice
+	for _, t := range groups {
+		IDs = append(IDs, t.ID)
+	}
+
+	groups, err := GetUserGroupsByIDs(a.DB, IDs)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// If length does not match, receive all new IDs
+	// could be that a requested group does not exist
+	log.Println("groups: " + strconv.Itoa(len(groups)))
+	log.Println("IDs: " + strconv.Itoa(len(IDs)))
+	if len(groups) != len(IDs) {
+		IDs = nil
+		for _, group := range groups {
+			IDs = append(IDs, group.ID)
+		}
+	}
+
+	// verify that any valid group was specified
+	if IDs == nil {
+		RespondWithError(w, http.StatusBadRequest, "No valid groups specified!")
+		return
+	}
+
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
+	// create media model by id to select from db
+	m := Media{ID: id}
+	// append the new tag if not present
+	if err := m.AddUserGroups(a.DB, IDs); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}

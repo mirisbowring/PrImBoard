@@ -3,6 +3,8 @@ package primboard
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
 // AddUserGroup handles the webrequest for usergroup creation
@@ -178,6 +180,19 @@ func (a *App) GetUserGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// success
+	RespondWithJSON(w, http.StatusOK, groups)
+}
+
+// GetUserGroupsByName returns available Tags by their name, starting with
+func (a *App) GetUserGroupsByName(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)
+	keyword := vars["name"]
+	groups, err := GetUserGroupsByKeyword(a.DB, keyword, a.Config.TagPreviewLimit)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	RespondWithJSON(w, http.StatusOK, groups)
 }
 
