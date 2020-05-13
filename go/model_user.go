@@ -1,8 +1,6 @@
 package primboard
 
 import (
-	"log"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -83,7 +81,6 @@ func GetUsers(db *mongo.Database, u []User) ([]User, error) {
 	}
 	cursor.All(ctx, &u)
 	CloseContext()
-	log.Println(u)
 	return u, nil
 }
 
