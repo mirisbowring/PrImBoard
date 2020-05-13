@@ -2,6 +2,7 @@ package primboard
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -93,11 +94,16 @@ func (a *App) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	if status != 0 {
 		return
 	}
-
-	// check if user does Exists
-	if !UsersExist(a.DB, u) {
-		// user does not exist
-		RespondWithError(w, http.StatusBadRequest, "Could not add users!")
+	log.Println(u)
+	// select all existing users from db that matches the given array
+	u, err := GetUsers(a.DB, u)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// verify, that any user was selected
+	if len(u) == 0 {
+		RespondWithError(w, http.StatusBadRequest, "No valid users specified!")
 		return
 	}
 

@@ -35,6 +35,8 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	// try to insert model into db
 	result, err := u.CreateUser(a.DB)
 	if err != nil {
+		// prevent the Token from expiration
+		i.Revalidate(a.DB, a.Config.InviteValidity)
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

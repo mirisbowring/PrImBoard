@@ -33,6 +33,18 @@ func parseUsername(w http.ResponseWriter, r *http.Request) (User, int) {
 	return user, 0
 }
 
+// parseToken parses the registration token from the route and returns it
+// status 0 -> ok || status 1 -> error
+func parseToken(w http.ResponseWriter, r *http.Request) (Invite, int) {
+	vars := mux.Vars(r)
+	invite := Invite{Token: vars["token"]}
+	if invite.Token == "" {
+		RespondWithError(w, http.StatusBadRequest, "Registrationtoken not specified!")
+		return invite, 1
+	}
+	return invite, 0
+}
+
 // getPermission parses the permissionfilter and returns it
 func getPermission(w http.ResponseWriter) bson.M {
 	username := w.Header().Get("user")

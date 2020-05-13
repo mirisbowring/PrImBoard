@@ -108,6 +108,39 @@ func (i *Invite) FindID(db *mongo.Database) error {
 	return err
 }
 
+// Revalidate sets the given token usage to false and adjusts the until date if
+// needed
+func (i *Invite) Revalidate(db *mongo.Database, validity int) error {
+	col, ctx := GetColCtx(inviteColName, db, 30)
+	// find token
+	if err := i.FindToken(db); err != nil {
+		CloseContext()
+		return err
+	}
+	i.Used = false
+	// adjust date if expired
+	if i.Until < time.Now().Unix() {
+		i.Until = time.Now().Add(time.Hour * time.Duration(validity*24)).Unix()
+	}
+
+	filter := bson.M{"token": i.Token}
+	update := bson.M{"$set": i}
+	// set update options
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// execute update
+	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&i)
+	CloseContext()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GenerateToken creates a crypto/rand based unique token
 func (i *Invite) generateToken() error {
 	token, err := generateRandomStringURLSafe(32)

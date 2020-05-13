@@ -1,6 +1,8 @@
 package primboard
 
 import (
+	"log"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -49,13 +51,7 @@ func (u *User) Exists(db *mongo.Database) bool {
 	if err := u.GetUser(db); err != nil {
 		return false
 	}
-	return true
-}
-
-// UsersExist checks if all users in the slice can be selected from the database
-// Assumes false if any error occurs
-func UsersExist(db *mongo.Database, u []User) bool {
-	if _, err := GetUsers(db, u); err != nil {
+	if u.Username == "" {
 		return false
 	}
 	return true
@@ -73,17 +69,22 @@ func (u *User) GetUser(db *mongo.Database) error {
 // GetUsers returns a sclice of the specified users from the database
 func GetUsers(db *mongo.Database, u []User) ([]User, error) {
 	col, ctx := GetColCtx(userColName, db, 30)
-	filter := bson.M{"username": bson.M{"$in": u}}
+	var usernames []string
+	// read all usernames
+	for _, user := range u {
+		usernames = append(usernames, user.Username)
+	}
+	filter := bson.M{"username": bson.M{"$in": usernames}}
 
-	var users []User
 	cursor, err := col.Find(ctx, filter)
 	if err != nil {
 		CloseContext()
-		return users, err
+		return []User{}, err
 	}
-	cursor.All(ctx, &users)
+	cursor.All(ctx, &u)
 	CloseContext()
-	return users, nil
+	log.Println(u)
+	return u, nil
 }
 
 // UpdateUser updates the record with the passed one
