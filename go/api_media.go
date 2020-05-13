@@ -1,7 +1,6 @@
 package primboard
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -187,8 +186,6 @@ func (a *App) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
 
 	// If length does not match, receive all new IDs
 	// could be that a requested group does not exist
-	log.Println("groups: " + strconv.Itoa(len(groups)))
-	log.Println("IDs: " + strconv.Itoa(len(IDs)))
 	if len(groups) != len(IDs) {
 		IDs = nil
 		for _, group := range groups {
@@ -371,7 +368,7 @@ func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ms, err := GetAllMedia(a.DB)
-	ms, err := GetMediaPage(a.DB, query)
+	ms, err := GetMediaPage(a.DB, query, getPermission(w))
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -389,7 +386,7 @@ func (a *App) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	// create model by passed id
 	m := Media{ID: id}
 	// try to select media
-	if err := m.GetMedia(a.DB); err != nil {
+	if err := m.GetMedia(a.DB, getPermission(w)); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -414,7 +411,7 @@ func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 	//create model by passed hash
 	m := Media{ID: id}
 	// try to select media
-	if err := m.GetMedia(a.DB); err != nil {
+	if err := m.GetMedia(a.DB, getPermission(w)); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found

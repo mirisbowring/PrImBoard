@@ -1,7 +1,10 @@
 package primboard
 
 import (
+	"log"
 	"net/http"
+
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 //Sessions is a map of token/session strings for authenticated users
@@ -9,11 +12,12 @@ var Sessions = []*Session{}
 
 // NewSession initializes a new Session (if not exists) for the passed user
 // otherwise it updates the token
-func NewSession(user User) *Session {
+func (a *App) NewSession(user User) *Session {
 	s := GetSessionByUser(user)
 	s.RenewToken()
 	if (s.User == User{} || s.User.Username == "") {
 		s.User = user
+		s.initUserGroups(a.DB, user.Username)
 		Sessions = append(Sessions, s)
 	}
 	return s
@@ -40,9 +44,18 @@ func GetSessionByUser(user User) *Session {
 	if (user == User{} || user.Username == "") {
 		return new(Session)
 	}
+	return GetSessionByUsername(user.Username)
+}
+
+// GetSessionByUsername returns the session for the passed username if exist
+func GetSessionByUsername(user string) *Session {
+	// skip iteration if passed argument is invalid
+	if user == "" {
+		return new(Session)
+	}
 	// iterate over cached sessions
 	for _, v := range Sessions {
-		if (v.User != User{} && v.User.Username == user.Username) {
+		if (v.User != User{} && v.User.Username == user) {
 			return v
 		}
 	}
@@ -82,4 +95,17 @@ func ReadSessionCookie(w *http.ResponseWriter, r *http.Request) string {
 		return ""
 	}
 	return cookie.Value
+}
+
+func (s *Session) initUserGroups(db *mongo.Database, user string) {
+	// preselect usergroups for performance reasons
+	groups, err := GetUserGroups(db, user)
+	if err != nil {
+		log.Println("Could not select usergroups for " + user)
+		return
+	}
+	// map IDs to session
+	for _, group := range groups {
+		s.Usergroups = append(s.Usergroups, group.ID)
+	}
 }

@@ -117,7 +117,7 @@ func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Create new Session and Cookie
-	SetSessionCookie(&w, r, NewSession(u))
+	SetSessionCookie(&w, r, a.NewSession(u))
 	// assuming that the user was logged in
 	RespondWithJSON(w, http.StatusOK, "Login was successful!")
 

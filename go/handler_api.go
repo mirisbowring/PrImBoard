@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -30,4 +31,11 @@ func parseUsername(w http.ResponseWriter, r *http.Request) (User, int) {
 		return user, 1
 	}
 	return user, 0
+}
+
+// getPermission parses the permissionfilter and returns it
+func getPermission(w http.ResponseWriter) bson.M {
+	username := w.Header().Get("user")
+	session := GetSessionByUsername(username)
+	return CreatePermissionFilter(session.Usergroups, username)
 }

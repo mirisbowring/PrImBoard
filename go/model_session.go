@@ -4,13 +4,17 @@ import (
 	"crypto/rand"
 	"fmt"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Session stores the user data, the token and the expiration of the session
+// Session stores the user data, the token, the expiration of the session and
+// the usergroups of the current user
 type Session struct {
-	User   User
-	Token  string
-	Expire time.Time
+	User       User
+	Token      string
+	Expire     time.Time
+	Usergroups []primitive.ObjectID
 }
 
 // IsValid returns whether the current session is valid or not

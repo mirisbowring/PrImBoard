@@ -53,6 +53,23 @@ var MediaProject = bson.M{
 	"groups":          UserGroupProject,
 }
 
+// CreatePermissionFilter creates a filter bson that matches the owner and it's groups
+func CreatePermissionFilter(groups []primitive.ObjectID, user string) bson.M {
+	filters := []bson.M{}
+	// username must be passed
+	if user == "" {
+		return bson.M{}
+	}
+	filters = append(filters, bson.M{"creator": user})
+	// add groups if passed
+	if groups != nil && len(groups) > 0 {
+		filters = append(filters, bson.M{"groupIDs": bson.M{"$in": groups}})
+	}
+
+	return bson.M{"$or": filters}
+
+}
+
 // name of the mongo collection
 var mediaColName = "media"
 
@@ -146,10 +163,13 @@ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 }
 
 // GetMediaPage returns the requested page after a specific id
-func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
+func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Media, error) {
 	// verify that query combination is able to be filtered
 	if err := query.IsValid(); err != nil {
 		return nil, err
+	}
+	if permission == nil {
+		return nil, errors.New("no permissions specified")
 	}
 	// parse the order of
 
@@ -178,6 +198,7 @@ func GetMediaPage(db *mongo.Database, query MediaQuery) ([]Media, error) {
 		tags := parseTags(db, query.Filter)
 		filters = append(filters, bson.M{"tagIDs": bson.M{"$in": tags}})
 	}
+	filters = append(filters, permission)
 
 	// create empty bson if no filter specified to prevent npe
 	var tmp bson.M
@@ -227,11 +248,18 @@ func GetAllMedia(db *mongo.Database) ([]Media, error) {
 }
 
 // GetMedia returns the specified entry from the mongodb
-func (m *Media) GetMedia(db *mongo.Database) error {
+func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
+	if permission == nil {
+		return errors.New("no permissions specified")
+	}
+	filter := bson.M{"$and": []bson.M{
+		{"_id": m.ID},
+		permission,
+	}}
 	// filter := bson.M{"_id": m.ID}
 	pipeline := []bson.M{
-		{"$match": bson.M{"_id": m.ID}},
+		{"$match": filter},
 		{"$lookup": bson.M{
 			"from":         "user",
 			"localField":   "comments.username",
@@ -252,6 +280,8 @@ func (m *Media) GetMedia(db *mongo.Database) error {
 		}},
 		{"$project": MediaProject},
 	}
+	// append permission
+	// pipeline = append(pipeline, permission)
 	// pipe := []bson.M{
 	// 	bson.M{"$project"}
 	// }
