@@ -19,7 +19,6 @@ type Media struct {
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
 	Creator         string               `json:"creator,omitempty" bson:"creator,omitempty"`
-	TagIDs          []primitive.ObjectID `json:"tagIDs,omitempty" bson:"tagIDs,omitempty"`
 	Events          []primitive.ObjectID `json:"events,omitempty" bson:"events,omitempty"`
 	GroupIDs        []primitive.ObjectID `json:"groupIDs,omitempty" bson:"groupIDs,omitempty"`
 	Timestamp       int64                `json:"timestamp,omitempty" bson:"timestamp,omitempty"`
@@ -28,7 +27,7 @@ type Media struct {
 	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
-	Tags            []string             `json:"tags,omitempty"`
+	Tags            []string             `json:"tags,omitempty" bson:"tags,omitempty"`
 	Users           []User               `json:"users,omitempty"`
 	Groups          []UserGroup          `json:"groups,omitempty"`
 }
@@ -48,7 +47,7 @@ var MediaProject = bson.M{
 	"urlThumb":        1,
 	"type":            1,
 	"format":          1,
-	"tags":            "$tags.name",
+	"tags":            1,
 	"users":           UserProject,
 	"groups":          UserGroupProject,
 }
@@ -81,14 +80,13 @@ func (m *Media) AddMedia(db *mongo.Database) (*mongo.InsertOneResult, error) {
 	return result, err
 }
 
-// AddTag adds a tag primitive.ObjectID to the mapped tag set (ignores
-// duplicates)
+// AddTag adds a tag to the mapped tag set (ignores duplicates)
 // Overrides the current model instance
-func (m *Media) AddTag(db *mongo.Database, t primitive.ObjectID) error {
+func (m *Media) AddTag(db *mongo.Database, t string) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
-	update := bson.M{"$addToSet": bson.M{"tagIDs": t}}
+	update := bson.M{"$addToSet": bson.M{"tags": t}}
 	// options to return the update document
 	after := options.After
 	upsert := true
@@ -105,14 +103,13 @@ func (m *Media) AddTag(db *mongo.Database, t primitive.ObjectID) error {
 	return nil
 }
 
-// AddTags adds an array of primitive.ObjectID (of a tag) to the mapped tag set
-// (ignores duplicates)
+// AddTags adds a tag array to the mapped tag set (ignores duplicates)
 // Overrides the current model instance
-func (m *Media) AddTags(db *mongo.Database, tIDs []primitive.ObjectID) error {
+func (m *Media) AddTags(db *mongo.Database, tags []string) error {
 	col, ctx := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
-	update := bson.M{"$addToSet": bson.M{"tagIDs": bson.M{"$each": tIDs}}}
+	update := bson.M{"$addToSet": bson.M{"tags": bson.M{"$each": tags}}}
 	// options to return the update document
 	after := options.After
 	upsert := true
@@ -195,9 +192,10 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Me
 	}
 	// check if filter have been specified
 	if len(query.Filter) > 0 {
-		tags := parseTags(db, query.Filter)
-		log.Println(tags)
-		filters = append(filters, bson.M{"tagIDs": bson.M{"$all": tags}})
+		// tags := parseTags(db, query.Filter)
+		filter := buildTagFilter(query.Filter)
+		log.Println(filter)
+		filters = append(filters, filter)
 	}
 	filters = append(filters, permission)
 
@@ -266,12 +264,6 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 			"localField":   "comments.username",
 			"foreignField": "username",
 			"as":           "users",
-		}},
-		{"$lookup": bson.M{
-			"from":         "tag",
-			"localField":   "tagIDs",
-			"foreignField": "_id",
-			"as":           "tags",
 		}},
 		{"$lookup": bson.M{
 			"from":         "usergroup",

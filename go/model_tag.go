@@ -38,7 +38,6 @@ func addTags(db *mongo.Database, tags []Tag) error {
 			// tag is invalid and needs to be stored in the db
 			tags[i].ID = primitive.NilObjectID
 		}
-		// tags[i].Name = strings.ToLower(tags[i].Name)
 		tags[i].Name = strings.TrimSpace(tags[i].Name)
 		// check if tag exists already
 		if err := tags[i].GetTagByName(db); err != nil {
@@ -103,7 +102,7 @@ func (t *Tag) GetTag(db *mongo.Database) error {
 // GetTagByName returns the specified entry from the mongodb
 func (t *Tag) GetTagByName(db *mongo.Database) error {
 	col, ctx := GetColCtx(tColName, db, 30)
-	filter := bson.M{"name": t.Name}
+	filter := bson.M{"name": bson.M{"$regex": t.Name, "$options": "i"}}
 	err := col.FindOne(ctx, filter).Decode(&t)
 	CloseContext()
 	return err
@@ -157,31 +156,29 @@ func (t *Tag) UpdateTag(db *mongo.Database, ut Tag) (*mongo.UpdateResult, error)
 	return result, err
 }
 
-// parse the tag filter string into ObjectID list (splitted at space)
-func parseTags(db *mongo.Database, tagFilter string) []primitive.ObjectID {
-	col, ctx := GetColCtx(tColName, db, 30)
-
-	var tagIDs []primitive.ObjectID
-
-	// split at space and join with pipe
-	s := strings.Join(strings.Fields(strings.TrimSpace(tagFilter)), "|")
-	filter := bson.M{"name": bson.M{"$regex": s}}
-
-	cursor, err := col.Find(ctx, filter)
-	if err != nil {
-		CloseContext()
-		log.Println(err)
-		return tagIDs
+// buildTagFilter parses the passed filter string and creates a bson that can be
+// appended to a find.
+func buildTagFilter(tagFilter string) bson.M {
+	filters := []bson.M{}
+	// trim whitespaces and get values onlyx
+	tags := strings.Fields(strings.TrimSpace(tagFilter))
+	// prevent exception
+	if len(tags) == 0 {
+		return bson.M{}
 	}
-	// iterate over cursor and append every id found
-	for cursor.Next(ctx) {
-		var tag Tag
-		if err := cursor.Decode(&tag); err != nil {
-			log.Println(err)
-			continue
-		}
-		tagIDs = append(tagIDs, tag.ID)
+	// iterate over passed tags and append regex pattern
+	for _, tag := range tags {
+		filters = append(filters, bson.M{"tags": bson.M{"$regex": tag, "$options": "i"}})
 	}
-	CloseContext()
-	return tagIDs
+
+	if len(filters) > 1 {
+		// bundle in $and if more than one tag
+		return bson.M{"$and": filters}
+	} else if len(filters) == 1 {
+		// return first entry if only one exists
+		return filters[0]
+	} else {
+		// return empty if anything went wrong
+		return bson.M{}
+	}
 }

@@ -124,7 +124,7 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 	// create media model by id to select from db
 	m := Media{ID: id}
 	// append the new tag if not present
-	if err := m.AddTag(a.DB, t.ID); err != nil {
+	if err := m.AddTag(a.DB, t.Name); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
@@ -136,7 +136,7 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 // creates a new tag if not in the tag document
 func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	var tags []Tag
-	var IDs []primitive.ObjectID
+	var tagnames []string
 	tags, status := DecodeTagsRequest(w, r, tags)
 	if status != 0 {
 		return
@@ -145,7 +145,7 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	for _, t := range tags {
 		// getting or creating the new tag
 		t.GetIDCreate(a.DB)
-		IDs = append(IDs, t.ID)
+		tagnames = append(tagnames, t.Name)
 	}
 
 	// parse ID from route
@@ -156,7 +156,7 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	// create media model by id to select from db
 	m := Media{ID: id}
 	// append the new tag if not present
-	if err := m.AddTags(a.DB, IDs); err != nil {
+	if err := m.AddTags(a.DB, tagnames); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
