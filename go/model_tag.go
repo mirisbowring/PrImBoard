@@ -38,7 +38,7 @@ func addTags(db *mongo.Database, tags []Tag) error {
 			// tag is invalid and needs to be stored in the db
 			tags[i].ID = primitive.NilObjectID
 		}
-		tags[i].Name = strings.ToLower(tags[i].Name)
+		// tags[i].Name = strings.ToLower(tags[i].Name)
 		tags[i].Name = strings.TrimSpace(tags[i].Name)
 		// check if tag exists already
 		if err := tags[i].GetTagByName(db); err != nil {
@@ -73,7 +73,7 @@ func (t *Tag) GetIDCreate(db *mongo.Database) error {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// tag not found - adding to db
-			t.Name = strings.ToLower(t.Name)
+			// t.Name = strings.ToLower(t.Name)
 			t.Name = strings.TrimSpace(t.Name)
 			res, e := t.AddTag(db)
 			if e != nil {
@@ -157,19 +157,20 @@ func (t *Tag) UpdateTag(db *mongo.Database, ut Tag) (*mongo.UpdateResult, error)
 	return result, err
 }
 
-// parse the tag filter string into list (splitted at space)
+// parse the tag filter string into ObjectID list (splitted at space)
 func parseTags(db *mongo.Database, tagFilter string) []primitive.ObjectID {
 	col, ctx := GetColCtx(tColName, db, 30)
 
 	var tagIDs []primitive.ObjectID
 
-	tags := strings.Split(tagFilter, " ")
-	filter := bson.M{"name": bson.M{"$in": tags}}
+	// split at space and join with pipe
+	s := strings.Join(strings.Fields(strings.TrimSpace(tagFilter)), "|")
+	filter := bson.M{"name": bson.M{"$regex": s}}
 
 	cursor, err := col.Find(ctx, filter)
 	if err != nil {
-		log.Println(err)
 		CloseContext()
+		log.Println(err)
 		return tagIDs
 	}
 	// iterate over cursor and append every id found

@@ -196,7 +196,8 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Me
 	// check if filter have been specified
 	if len(query.Filter) > 0 {
 		tags := parseTags(db, query.Filter)
-		filters = append(filters, bson.M{"tagIDs": bson.M{"$in": tags}})
+		log.Println(tags)
+		filters = append(filters, bson.M{"tagIDs": bson.M{"$all": tags}})
 	}
 	filters = append(filters, permission)
 
