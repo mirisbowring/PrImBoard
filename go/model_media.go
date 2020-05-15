@@ -321,12 +321,14 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 	return nil
 }
 
+// GetMediaByIDs selects multiple Media Documents for the passed ids.
+// verifies the reading permissions
 func GetMediaByIDs(db *mongo.Database, ids []primitive.ObjectID, permission bson.M) ([]Media, error) {
 	if permission == nil {
 		return nil, errors.New("no permissions specified")
 	}
 	filter := bson.M{"$and": []bson.M{
-		bson.M{"_id": bson.M{"$in": ids}},
+		{"_id": bson.M{"$in": ids}},
 		permission}}
 
 	col, ctx := GetColCtx(mediaColName, db, 30)
