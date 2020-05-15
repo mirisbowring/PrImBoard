@@ -22,7 +22,8 @@ func DecodeMediaRequest(w http.ResponseWriter, r *http.Request, m Media) (Media,
 // DecodeMediasRequest decodes the api request into the passed slice
 // responds with decode error if occurs
 // status 0 => ok || status 1 => error
-func DecodeMediasRequest(w http.ResponseWriter, r *http.Request, m []Media) ([]Media, int) {
+func DecodeMediasRequest(w http.ResponseWriter, r *http.Request) ([]Media, int) {
+	var m []Media
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
 		// an decode error occured

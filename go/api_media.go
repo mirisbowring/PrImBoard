@@ -401,6 +401,25 @@ func (a *App) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, m)
 }
 
+// GetMediaByIDs handles the webrequest for receiving Media models by ids
+func (a *App) GetMediaByIDs(w http.ResponseWriter, r *http.Request) {
+	m, status := DecodeMediasRequest(w, r)
+	if status != 0 {
+		return
+	}
+	var IDs []primitive.ObjectID
+	for _, id := range m {
+		IDs = append(IDs, id.ID)
+	}
+	media, err := GetMediaByIDs(a.DB, IDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, media)
+	return
+}
+
 // GetMediaByHash Handles the webrequest for receiving Media model by ipfs hash
 // and mongo id
 func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
@@ -428,6 +447,40 @@ func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 	}
 	// could select media from mongo
 	RespondWithJSON(w, http.StatusOK, m)
+}
+
+// MapTagsToMedia adds a list of tags to a list of media
+func (a *App) MapTagsToMedia(w http.ResponseWriter, r *http.Request) {
+	tmm, status := DecodeTagMediaMapRequest(w, r)
+	if status != 0 {
+		return
+	}
+	// iterating over all tags and adding them if not exist
+	for _, t := range tmm.Tags {
+		// getting or creating the new tag
+		tmp := Tag{Name: t}
+		tmp.GetIDCreate(a.DB)
+	}
+	// parsing ids
+	IDs, err := ParseIDs(tmm.IDs)
+	if err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// execute bulk update
+	_, err = BulkAddTagMedia(a.DB, tmm.Tags, IDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		return
+	}
+
+	media, err := GetMediaByIDs(a.DB, IDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, media)
+	return
 }
 
 // UpdateMediaByHash handles the webrequest for updating the Media with the passed

@@ -150,6 +150,28 @@ func (m *Media) AddUserGroups(db *mongo.Database, ugIDs []primitive.ObjectID) er
 	return nil
 }
 
+// BulkAddTagMedia bulk operates an add Tags to  many media ids
+func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	opts := options.BulkWrite().SetOrdered(false)
+	// create update list
+	models := []mongo.WriteModel{}
+	for _, id := range ids {
+		filter := bson.M{"$and": []bson.M{
+			{"_id": id},
+			permission}}
+		update := bson.M{"$addToSet": bson.M{"tags": bson.M{"$each": tags}}}
+		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
+	}
+	// execute bulk update
+	res, err := col.BulkWrite(ctx, models, opts)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return res, nil
+}
+
 // DeleteMedia deletes the model from the mongodb
 func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 	col, ctx := GetColCtx(mediaColName, db, 30)
@@ -297,6 +319,28 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 		return errors.New("no results")
 	}
 	return nil
+}
+
+func GetMediaByIDs(db *mongo.Database, ids []primitive.ObjectID, permission bson.M) ([]Media, error) {
+	if permission == nil {
+		return nil, errors.New("no permissions specified")
+	}
+	filter := bson.M{"$and": []bson.M{
+		bson.M{"_id": bson.M{"$in": ids}},
+		permission}}
+
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	var media []Media
+	cursor, err := col.Find(ctx, filter)
+	if err != nil {
+		log.Println(err)
+		CloseContext()
+		return media, err
+	}
+
+	cursor.All(ctx, &media)
+	CloseContext()
+	return media, nil
 }
 
 // Save writes changes, made to the instance itself, to the database and

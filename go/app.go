@@ -3,6 +3,8 @@ package primboard
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -205,4 +208,18 @@ func RemoveString(s []string, r string) []string {
 		}
 	}
 	return s
+}
+
+// ParseIDs parses a slice of hex ids into primitive.ObjectIDs
+func ParseIDs(ids []string) ([]primitive.ObjectID, error) {
+	var IDs []primitive.ObjectID
+	for _, i := range ids {
+		id, err := primitive.ObjectIDFromHex(i)
+		if err != nil {
+			e := fmt.Sprintf("could not parse %s to primitive.ObjectID.", i)
+			return nil, errors.New(e)
+		}
+		IDs = append(IDs, id)
+	}
+	return IDs, nil
 }
