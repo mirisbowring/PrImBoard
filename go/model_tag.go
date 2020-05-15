@@ -116,7 +116,7 @@ func GetTagsByKeyword(db *mongo.Database, keyword string, limit int64) ([]Tag, e
 	options.SetSort(bson.M{"name": 1}).SetLimit(limit)
 	// define filter
 	filter := bson.M{
-		"name": primitive.Regex{Pattern: "^" + keyword},
+		"name": primitive.Regex{Pattern: "^" + keyword, Options: "i"},
 	}
 	// execute filter query
 	var tags []Tag
