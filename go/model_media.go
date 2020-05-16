@@ -165,6 +165,30 @@ func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID
 	}
 	// execute bulk update
 	res, err := col.BulkWrite(ctx, models, opts)
+	CloseContext()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return res, nil
+}
+
+// BulkAddMediaEvent bulk operates an add Tags to  many media ids
+func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	col, ctx := GetColCtx(mediaColName, db, 30)
+	opts := options.BulkWrite().SetOrdered(false)
+	// create update list
+	models := []mongo.WriteModel{}
+	for _, id := range mediaIDs {
+		filter := bson.M{"$and": []bson.M{
+			{"_id": id},
+			permission}}
+		update := bson.M{"$addToSet": bson.M{"events": bson.M{"$each": eventIDs}}}
+		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
+	}
+	// execute bulk update
+	res, err := col.BulkWrite(ctx, models, opts)
+	CloseContext()
 	if err != nil {
 		log.Println(err)
 		return nil, err

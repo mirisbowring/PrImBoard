@@ -2,11 +2,12 @@ package primboard
 
 import (
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
-	"time"
 )
 
 // AddEvent handles the webrequest for Event creation
@@ -85,6 +86,58 @@ func (a *App) GetEventByID(w http.ResponseWriter, r *http.Request) {
 	}
 	// could select user from mongo
 	RespondWithJSON(w, http.StatusOK, e)
+}
+
+// GetEventsByName returns available Events by their name, starting with
+func (a *App) GetEventsByName(w http.ResponseWriter, r *http.Request) {
+	// parse request
+	vars := mux.Vars(r)
+	keyword := vars["title"]
+	events, err := GetEventsByKeyword(a.DB, getPermission(w), keyword, a.Config.TagPreviewLimit)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, events)
+}
+
+// MapTagsToEvents maps a slice of Tags to a slice of events
+func (a *App) MapTagsToEvents(w http.ResponseWriter, r *http.Request) {
+	tem, status := DecodeTagEventMapRequest(w, r)
+	if status != 0 {
+		return
+	}
+	// iterating over all tags and adding them if not exist
+	for _, t := range tem.Tags {
+		// getting or creating the new tag
+		tmp := Tag{Name: t}
+		tmp.GetIDCreate(a.DB)
+	}
+
+	var IDs []primitive.ObjectID
+	// iterating over all events and add them if not exist
+	for _, e := range tem.Events {
+		if err := e.GetEventCreate(a.DB); err != nil {
+			RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		IDs = append(IDs, e.ID)
+	}
+
+	// execute bulk update
+	_, err := BulkAddTagEvent(a.DB, tem.Tags, IDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		return
+	}
+
+	media, err := GetEventsByIDs(a.DB, IDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, media)
+	return
 }
 
 // UpdateEventByID handles the webrequest for updating the Event with the passed request body
