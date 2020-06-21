@@ -234,7 +234,7 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Me
 	}
 	// check if event was specified
 	if !query.Event.IsZero() {
-		filters = append(filters, bson.M{"mo": query.Event})
+		filters = append(filters, bson.M{"events": query.Event})
 	}
 	// check if filter have been specified
 	if len(query.Filter) > 0 {
