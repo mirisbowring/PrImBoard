@@ -74,16 +74,16 @@ var mediaColName = "media"
 
 // AddMedia creates the model in the mongodb
 func (m *Media) AddMedia(db *mongo.Database) (*mongo.InsertOneResult, error) {
-	col, ctx := GetColCtx(mediaColName, db, 30)
-	result, err := col.InsertOne(ctx, m)
-	CloseContext()
+	conn := GetColCtx(mediaColName, db, 30)
+	result, err := conn.Col.InsertOne(conn.Ctx, m)
+	defer conn.Cancel()
 	return result, err
 }
 
 // AddTag adds a tag to the mapped tag set (ignores duplicates)
 // Overrides the current model instance
 func (m *Media) AddTag(db *mongo.Database, t string) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
 	update := bson.M{"$addToSet": bson.M{"tags": t}}
@@ -95,8 +95,8 @@ func (m *Media) AddTag(db *mongo.Database, t string) error {
 		Upsert:         &upsert,
 	}
 	// Execute query
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
-	CloseContext()
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&m)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (m *Media) AddTag(db *mongo.Database, t string) error {
 // AddTags adds a tag array to the mapped tag set (ignores duplicates)
 // Overrides the current model instance
 func (m *Media) AddTags(db *mongo.Database, tags []string) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the tag array to be handled as set
 	update := bson.M{"$addToSet": bson.M{"tags": bson.M{"$each": tags}}}
@@ -118,8 +118,8 @@ func (m *Media) AddTags(db *mongo.Database, tags []string) error {
 		Upsert:         &upsert,
 	}
 	// Execute query
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
-	CloseContext()
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&m)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (m *Media) AddTags(db *mongo.Database, tags []string) error {
 // mapped usergroup set (ignores duplicates) Overrides the current model
 // instance
 func (m *Media) AddUserGroups(db *mongo.Database, ugIDs []primitive.ObjectID) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	// specify the usergroup array to be handled as set
 	update := bson.M{"$addToSet": bson.M{"groupIDs": bson.M{"$each": ugIDs}}}
@@ -142,8 +142,8 @@ func (m *Media) AddUserGroups(db *mongo.Database, ugIDs []primitive.ObjectID) er
 		Upsert:         &upsert,
 	}
 	// Execute query
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
-	CloseContext()
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&m)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}
@@ -152,7 +152,7 @@ func (m *Media) AddUserGroups(db *mongo.Database, ugIDs []primitive.ObjectID) er
 
 // BulkAddTagMedia bulk operates an add Tags to  many media ids
 func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	opts := options.BulkWrite().SetOrdered(false)
 	// create update list
 	models := []mongo.WriteModel{}
@@ -164,8 +164,8 @@ func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID
 		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
 	}
 	// execute bulk update
-	res, err := col.BulkWrite(ctx, models, opts)
-	CloseContext()
+	res, err := conn.Col.BulkWrite(conn.Ctx, models, opts)
+	defer conn.Cancel()
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -175,7 +175,7 @@ func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID
 
 // BulkAddMediaEvent bulk operates an add Tags to  many media ids
 func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	opts := options.BulkWrite().SetOrdered(false)
 	// create update list
 	models := []mongo.WriteModel{}
@@ -187,8 +187,8 @@ func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventI
 		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
 	}
 	// execute bulk update
-	res, err := col.BulkWrite(ctx, models, opts)
-	CloseContext()
+	res, err := conn.Col.BulkWrite(conn.Ctx, models, opts)
+	defer conn.Cancel()
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -198,10 +198,10 @@ func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventI
 
 // DeleteMedia deletes the model from the mongodb
 func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
-	result, err := col.DeleteOne(ctx, filter)
-	CloseContext()
+	result, err := conn.Col.DeleteOne(conn.Ctx, filter)
+	defer conn.Cancel()
 	return result, err
 }
 
@@ -252,48 +252,49 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Me
 		tmp = bson.M{}
 	}
 
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 
 	// fetch results
 	var media []Media
-	cursor, err := col.Find(ctx, tmp, opts)
+	cursor, err := conn.Col.Find(conn.Ctx, tmp, opts)
 	if err != nil {
 		log.Println(err)
-		CloseContext()
+		defer conn.Cancel()
 		return media, err
 	}
 
-	cursor.All(ctx, &media)
-	CloseContext()
+	cursor.All(conn.Ctx, &media)
+	defer conn.Cancel()
 	return media, nil
 }
 
 // GetAllMedia selects all Media from the mongodb
 func GetAllMedia(db *mongo.Database) ([]Media, error) {
-	col, ctx := GetColCtx(mediaColName, db, 30)
-	cursor, err := col.Find(ctx, bson.M{}) //find all
+	conn := GetColCtx(mediaColName, db, 30)
+	cursor, err := conn.Col.Find(conn.Ctx, bson.M{}) //find all
 	if err != nil {
+		defer conn.Cancel()
 		return nil, err
 	}
-	defer cursor.Close(ctx)
+	defer cursor.Close(conn.Ctx)
 	// iterate over the cursor and create array
 	var ms []Media
-	for cursor.Next(ctx) {
+	for cursor.Next(conn.Ctx) {
 		var m Media
 		cursor.Decode(&m)
 		ms = append(ms, m)
 	}
 	// report errors if occured
 	if err = cursor.Err(); err != nil {
+		defer conn.Cancel()
 		return nil, err
 	}
-	CloseContext()
+	defer conn.Cancel()
 	return ms, nil
 }
 
 // GetMedia returns the specified entry from the mongodb
 func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
 	if permission == nil {
 		return errors.New("no permissions specified")
 	}
@@ -324,21 +325,23 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 	// 	bson.M{"$project"}
 	// }
 	opts := options.Aggregate()
-	cursor, err := col.Aggregate(ctx, pipeline, opts)
+	conn := GetColCtx(mediaColName, db, 30)
+	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
 	if err != nil {
+		defer conn.Cancel()
 		return err
 	}
 	var found = false
-	for cursor.Next(ctx) {
+	for cursor.Next(conn.Ctx) {
 		err := cursor.Decode(&m)
 		if err != nil {
-			CloseContext()
+			defer conn.Cancel()
 			return err
 		}
 		found = true
 		break
 	}
-	CloseContext()
+	defer conn.Cancel()
 	if !found {
 		return errors.New("no results")
 	}
@@ -355,24 +358,24 @@ func GetMediaByIDs(db *mongo.Database, ids []primitive.ObjectID, permission bson
 		{"_id": bson.M{"$in": ids}},
 		permission}}
 
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	var media []Media
-	cursor, err := col.Find(ctx, filter)
+	cursor, err := conn.Col.Find(conn.Ctx, filter)
 	if err != nil {
 		log.Println(err)
-		CloseContext()
+		defer conn.Cancel()
 		return media, err
 	}
 
-	cursor.All(ctx, &media)
-	CloseContext()
+	cursor.All(conn.Ctx, &media)
+	defer conn.Cancel()
 	return media, nil
 }
 
 // Save writes changes, made to the instance itself, to the database and
 // overrides the instance with the return value from the database
 func (m *Media) Save(db *mongo.Database) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	update := bson.M{"$set": m}
 	// options to return the update document
@@ -383,8 +386,8 @@ func (m *Media) Save(db *mongo.Database) error {
 		Upsert:         &upsert,
 	}
 	// Execute query
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
-	CloseContext()
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&m)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}
@@ -394,7 +397,7 @@ func (m *Media) Save(db *mongo.Database) error {
 // UpdateMedia updates the record with the passed one
 // Does NOT call the checkComments Method
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
-	col, ctx := GetColCtx(mediaColName, db, 30)
+	conn := GetColCtx(mediaColName, db, 30)
 	filter := bson.M{"_id": m.ID}
 	update := bson.M{"$set": um}
 	// options to return the update document
@@ -405,8 +408,8 @@ func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
 		Upsert:         &upsert,
 	}
 	// Execute query
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&m)
-	CloseContext()
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&m)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}

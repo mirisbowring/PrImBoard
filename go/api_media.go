@@ -458,8 +458,9 @@ func (a *App) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 
 	var eventIDs []primitive.ObjectID
 	// iterating over all events and add them if not exist
+	username := w.Header().Get("user")
 	for _, e := range mem.Events {
-		if err := e.GetEventCreate(a.DB); err != nil {
+		if err := e.GetEventCreate(a.DB, username); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}

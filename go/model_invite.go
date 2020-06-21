@@ -25,7 +25,6 @@ var inviteColName = "invite"
 // Init inits a token and saves it into database.
 // Default validity is 3 days
 func (i *Invite) Init(db *mongo.Database, validity int) (*mongo.InsertOneResult, error) {
-	col, ctx := GetColCtx(inviteColName, db, 30)
 	if err := i.generateToken(); err != nil {
 		return nil, err
 	}
@@ -34,11 +33,9 @@ func (i *Invite) Init(db *mongo.Database, validity int) (*mongo.InsertOneResult,
 	err := i.FindToken(db)
 	if err == nil {
 		// if no error occured -> token was found -> generate new
-		CloseContext()
 		i.Init(db, validity)
 	} else if err != mongo.ErrNoDocuments {
 		// if no ErrNoDocuments error occured -> return
-		CloseContext()
 		return nil, err
 	}
 	// Token could not be found -> continue
@@ -46,28 +43,25 @@ func (i *Invite) Init(db *mongo.Database, validity int) (*mongo.InsertOneResult,
 	i.Until = time.Now().Add(time.Hour * time.Duration(validity*24)).Unix()
 	i.Used = false
 
-	result, err := col.InsertOne(ctx, i)
-	CloseContext()
+	conn := GetColCtx(inviteColName, db, 30)
+	result, err := conn.Col.InsertOne(conn.Ctx, i)
+	defer conn.Cancel()
 	return result, err
 }
 
 // Invalidate verifies that the token is in the database and is valid.
 // If the token is valid, it sets it's used state to used.
 func (i *Invite) Invalidate(db *mongo.Database) error {
-	col, ctx := GetColCtx(inviteColName, db, 30)
 	// find token
 	if err := i.FindToken(db); err != nil {
-		CloseContext()
 		return err
 	}
 	// verify
 	if i.Used {
 		// token has been used already
-		CloseContext()
 		return errors.New("token has been used already")
 	} else if i.Until < time.Now().Unix() {
 		// token has been expired
-		CloseContext()
 		return errors.New("token has been expired")
 	}
 	// invalidate
@@ -82,8 +76,9 @@ func (i *Invite) Invalidate(db *mongo.Database) error {
 		Upsert:         &upsert,
 	}
 	// execute update
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&i)
-	CloseContext()
+	conn := GetColCtx(inviteColName, db, 30)
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&i)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}
@@ -92,29 +87,27 @@ func (i *Invite) Invalidate(db *mongo.Database) error {
 
 // FindToken selects an Invite with the given token
 func (i *Invite) FindToken(db *mongo.Database) error {
-	col, ctx := GetColCtx(inviteColName, db, 30)
+	conn := GetColCtx(inviteColName, db, 30)
 	filter := bson.M{"token": i.Token}
-	err := col.FindOne(ctx, filter).Decode(&i)
-	CloseContext()
+	err := conn.Col.FindOne(conn.Ctx, filter).Decode(&i)
+	defer conn.Cancel()
 	return err
 }
 
 // FindID selects an Invite with the given ID
 func (i *Invite) FindID(db *mongo.Database) error {
-	col, ctx := GetColCtx(inviteColName, db, 30)
+	conn := GetColCtx(inviteColName, db, 30)
 	filter := bson.M{"_id": i.ID}
-	err := col.FindOne(ctx, filter).Decode(&i)
-	CloseContext()
+	err := conn.Col.FindOne(conn.Ctx, filter).Decode(&i)
+	defer conn.Cancel()
 	return err
 }
 
 // Revalidate sets the given token usage to false and adjusts the until date if
 // needed
 func (i *Invite) Revalidate(db *mongo.Database, validity int) error {
-	col, ctx := GetColCtx(inviteColName, db, 30)
 	// find token
 	if err := i.FindToken(db); err != nil {
-		CloseContext()
 		return err
 	}
 	i.Used = false
@@ -133,8 +126,9 @@ func (i *Invite) Revalidate(db *mongo.Database, validity int) error {
 		Upsert:         &upsert,
 	}
 	// execute update
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&i)
-	CloseContext()
+	conn := GetColCtx(inviteColName, db, 30)
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&i)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}

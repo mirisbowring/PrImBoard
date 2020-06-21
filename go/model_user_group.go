@@ -30,71 +30,71 @@ var ugColName = "usergroup"
 
 // AddUserGroup creates the model in the mongodb
 func (ug *UserGroup) AddUserGroup(db *mongo.Database, skipVerify bool) (*mongo.InsertOneResult, error) {
-	col, ctx := GetColCtx(ugColName, db, 30)
 	if !skipVerify {
 		// verify that the fields are valid
 		if err := ug.Verify(db); err != nil {
 			return nil, err
 		}
 	}
-	result, err := col.InsertOne(ctx, ug)
-	CloseContext()
+	conn := GetColCtx(ugColName, db, 30)
+	result, err := conn.Col.InsertOne(conn.Ctx, ug)
+	defer conn.Cancel()
 	return result, err
 }
 
 // DeleteUserGroup deletes the model from the mongodb
 func (ug *UserGroup) DeleteUserGroup(db *mongo.Database) (*mongo.DeleteResult, error) {
-	col, ctx := GetColCtx(ugColName, db, 30)
+	conn := GetColCtx(ugColName, db, 30)
 	filter := bson.M{"_id": ug.ID}
-	result, err := col.DeleteOne(ctx, filter)
-	CloseContext()
+	result, err := conn.Col.DeleteOne(conn.Ctx, filter)
+	defer conn.Cancel()
 	return result, err
 }
 
 // GetUserGroup returns the specified entry from the mongodb
 func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
-	col, ctx := GetColCtx(ugColName, db, 30)
+	conn := GetColCtx(ugColName, db, 30)
 	filter := bson.M{"_id": ug.ID}
-	err := col.FindOne(ctx, filter).Decode(&ug)
-	CloseContext()
+	err := conn.Col.FindOne(conn.Ctx, filter).Decode(&ug)
+	defer conn.Cancel()
 	return err
 }
 
 // GetUserGroups returns all groups the user is part of
 func GetUserGroups(db *mongo.Database, user string) ([]UserGroup, error) {
-	col, ctx := GetColCtx(ugColName, db, 30)
+	conn := GetColCtx(ugColName, db, 30)
 	filter := bson.M{"users": user}
 	var groups []UserGroup
 
-	cursor, err := col.Find(ctx, filter)
+	cursor, err := conn.Col.Find(conn.Ctx, filter)
 	if err != nil {
-		CloseContext()
+		defer conn.Cancel()
 		return groups, err
 	}
-	cursor.All(ctx, &groups)
-	CloseContext()
+	cursor.All(conn.Ctx, &groups)
+	defer conn.Cancel()
 	return groups, nil
 }
 
 // GetUserGroupsByIDs returns a slice of usergroups, that are matching the given id slice
 func GetUserGroupsByIDs(db *mongo.Database, ids []primitive.ObjectID) ([]UserGroup, error) {
-	col, ctx := GetColCtx(ugColName, db, 30)
+	conn := GetColCtx(ugColName, db, 30)
 	filter := bson.M{"_id": bson.M{"$in": ids}}
 
 	var groups []UserGroup
-	cursor, err := col.Find(ctx, filter)
+	cursor, err := conn.Col.Find(conn.Ctx, filter)
 	if err != nil {
-		CloseContext()
+		defer conn.Cancel()
 		return groups, err
 	}
-	cursor.All(ctx, &groups)
-	CloseContext()
+	cursor.All(conn.Ctx, &groups)
+	defer conn.Cancel()
 	return groups, nil
 }
 
 // GetUserGroupsByKeyword returns the topmost groups that are starting with the keyword
 func GetUserGroupsByKeyword(db *mongo.Database, keyword string, limit int64) ([]UserGroup, error) {
-	col, ctx := GetColCtx(ugColName, db, 30)
+	conn := GetColCtx(ugColName, db, 30)
 	// define options (sort, limit, ...)
 	options := options.Find()
 	options.SetSort(bson.M{"title": 1}).SetLimit(limit)
@@ -104,19 +104,18 @@ func GetUserGroupsByKeyword(db *mongo.Database, keyword string, limit int64) ([]
 	}
 	// execute filter query
 	var groups []UserGroup
-	cursor, err := col.Find(ctx, filter, options)
-	if err = cursor.All(ctx, &groups); err != nil {
-		CloseContext()
+	cursor, err := conn.Col.Find(conn.Ctx, filter, options)
+	if err = cursor.All(conn.Ctx, &groups); err != nil {
+		defer conn.Cancel()
 		return nil, err
 	}
-	CloseContext()
+	defer conn.Cancel()
 	return groups, nil
 }
 
 // Save writes changes, made to the instance itself, to the database and
 // overrides the instance with the return value from the database
 func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {
-	col, ctx := GetColCtx(ugColName, db, 30)
 	if !skipVerify {
 		// verify that the fields are valid
 		if err := ug.Verify(db); err != nil {
@@ -133,8 +132,9 @@ func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {
 		Upsert:         &upsert,
 	}
 	// Execute query
-	err := col.FindOneAndUpdate(ctx, filter, update, &options).Decode(&ug)
-	CloseContext()
+	conn := GetColCtx(ugColName, db, 30)
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&ug)
+	defer conn.Cancel()
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,6 @@ func (ug *UserGroup) Save(db *mongo.Database, skipVerify bool) error {
 
 // UpdateUserGroup updates the record with the passed one
 func (ug *UserGroup) UpdateUserGroup(db *mongo.Database, uug UserGroup, skipVerify bool) (*mongo.UpdateResult, error) {
-	col, ctx := GetColCtx(ugColName, db, 30)
 	if !skipVerify {
 		// verify that the fields are valid
 		if err := uug.Verify(db); err != nil {
@@ -156,8 +155,9 @@ func (ug *UserGroup) UpdateUserGroup(db *mongo.Database, uug UserGroup, skipVeri
 	}
 	filter := bson.M{"_id": ug.ID}
 	update := bson.M{"$set": uug}
-	result, err := col.UpdateOne(ctx, filter, update)
-	CloseContext()
+	conn := GetColCtx(ugColName, db, 30)
+	result, err := conn.Col.UpdateOne(conn.Ctx, filter, update)
+	defer conn.Cancel()
 	return result, err
 }
 

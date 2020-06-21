@@ -1,14 +1,12 @@
 package primboard
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -164,17 +162,6 @@ func enableCors(w *http.ResponseWriter) {
 	// should ask if option (put delete post)
 	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-}
-
-// Returns the collection for the specified model on the passed db instance
-func modelCollection(model string, db *mongo.Database) *mongo.Collection {
-	return db.Collection(model)
-}
-
-// GetColCtx returns the collection for the specified model and initializes a
-// timeout context with passed duration
-func GetColCtx(model string, db *mongo.Database, duration time.Duration) (*mongo.Collection, context.Context) {
-	return modelCollection(model, db), DBContext(duration)
 }
 
 // Find iterates over the slice and returns the position of the element if found

@@ -26,6 +26,8 @@ func (a *App) AddEvent(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusBadRequest, "Title cannot be empty")
 		return
 	}
+	// settings creator
+	e.Creator = w.Header().Get("user")
 	// setting creation timestamp
 	e.TimestampCreation = int64(time.Now().Unix())
 	// try to insert model into db
@@ -115,9 +117,10 @@ func (a *App) MapTagsToEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var IDs []primitive.ObjectID
+	username := w.Header().Get("user")
 	// iterating over all events and add them if not exist
 	for _, e := range tem.Events {
-		if err := e.GetEventCreate(a.DB); err != nil {
+		if err := e.GetEventCreate(a.DB, username); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}

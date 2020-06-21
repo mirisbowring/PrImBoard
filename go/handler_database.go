@@ -9,6 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// DBConnection holds information about the collection and the context
+type DBConnection struct {
+	Col    *mongo.Collection
+	Ctx    context.Context
+	Cancel context.CancelFunc
+}
+
 // Connect initializes a mongodb connection
 func (a *App) Connect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -23,16 +30,12 @@ func (a *App) Connect() {
 
 // helpers
 
-var cancel context.CancelFunc
-
-// DBContext creates a context of specified duration
-func DBContext(i time.Duration) context.Context {
-	var ctx context.Context
-	ctx, cancel = context.WithTimeout(context.Background(), i*time.Second)
-	return ctx
-}
-
-// CloseContext defers the cancel function
-func CloseContext() {
-	defer cancel()
+// GetColCtx returns the collection for the specified model and initializes a
+// timeout context with passed duration
+func GetColCtx(model string, db *mongo.Database, duration time.Duration) DBConnection {
+	var conn DBConnection
+	// init the specified collection on the passed db instance
+	conn.Col = db.Collection(model)
+	conn.Ctx, conn.Cancel = context.WithTimeout(context.Background(), duration*time.Second)
+	return conn
 }
