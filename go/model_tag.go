@@ -156,6 +156,33 @@ func (t *Tag) UpdateTag(db *mongo.Database, ut Tag) (*mongo.UpdateResult, error)
 	return result, err
 }
 
+// VerifyTag creates the tag if not in the db already and returns the name in
+// the db
+func VerifyTag(db *mongo.Database, tag string) (string, error) {
+	// getting or creating the new tag
+	tmp := Tag{Name: tag}
+	err := tmp.GetIDCreate(db)
+	// returning tag name
+	return tmp.Name, err
+}
+
+// VerifyTags iterates over an array of tags and creates the tags if not in db
+// already. Uniquifies the slice and returns the clean slice.
+func VerifyTags(db *mongo.Database, tags []string) ([]string, error) {
+	var cleanTags []string
+	for _, tag := range tags {
+		// find or create tag
+		t, err := VerifyTag(db, tag)
+		if err != nil {
+			return nil, err
+		}
+		cleanTags = append(cleanTags, t)
+	}
+	// uniquify tags
+	cleanTags = UniqueStrings(cleanTags)
+	return cleanTags, nil
+}
+
 // buildTagFilter parses the passed filter string and creates a bson that can be
 // appended to a find.
 func buildTagFilter(tagFilter string) bson.M {

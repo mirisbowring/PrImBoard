@@ -23,6 +23,7 @@ func (a *App) InitializeRoutes() {
 	// media
 	a.Router.Handle("/api/v1/media", a.Authenticate(http.HandlerFunc(a.GetMedia), false)).Methods("GET")
 	a.Router.Handle("/api/v1/media", a.Authenticate(http.HandlerFunc(a.AddMedia), false)).Methods("POST")
+	a.Router.Handle("/api/v1/media/upload", a.Authenticate(http.HandlerFunc(a.UploadMedia), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/byids", a.Authenticate(http.HandlerFunc(a.GetMediaByIDs), false)).Methods("GET")
 	a.Router.Handle("/api/v1/media/maptags", a.Authenticate(http.HandlerFunc(a.MapTagsToMedia), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/mapevents", a.Authenticate(http.HandlerFunc(a.MapEventsToMedia), false)).Methods("POST")
@@ -48,8 +49,14 @@ func (a *App) InitializeRoutes() {
 	// user
 	a.Router.HandleFunc("/api/v1/user", a.CreateUser).Methods("POST")
 	a.Router.Handle("/api/v1/user/invite", a.Authenticate(http.HandlerFunc(a.GenerateInvite), false)).Methods("GET")
+	a.Router.Handle("/api/v1/user/node", a.Authenticate(http.HandlerFunc(a.AddNode), false)).Methods("POST")
+	a.Router.Handle("/api/v1/user/node/{id}", a.Authenticate(http.HandlerFunc(a.DeleteNodeByID), false)).Methods("DELETE")
+	a.Router.Handle("/api/v1/user/node/{id}", a.Authenticate(http.HandlerFunc(a.GetNodeByID), false)).Methods("GET")
+	a.Router.Handle("/api/v1/user/node/{id}", a.Authenticate(http.HandlerFunc(a.UpdateNodeByID), false)).Methods("PUT")
+	a.Router.Handle("/api/v1/user/nodes", a.Authenticate(http.HandlerFunc(a.GetNodes), false)).Methods("GET")
 	a.Router.Handle("/api/v1/user/{username}", a.Authenticate(http.HandlerFunc(a.DeleteUser), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/user/{username}", a.Authenticate(http.HandlerFunc(a.GetUserByUsername), false)).Methods("GET")
+	a.Router.Handle("/api/v1/user/{username}/settings", a.Authenticate(http.HandlerFunc(a.GetSettingsByUsername), false)).Methods("GET")
 	a.Router.HandleFunc("/api/v1/login", a.LoginUser).Methods("POST")
 	a.Router.Handle("/api/v1/logout", a.Authenticate(http.HandlerFunc(a.LogoutUser), true)).Methods("POST")
 	a.Router.Handle("/api/v1/user/{username}", a.Authenticate(http.HandlerFunc(a.UpdateUser), false)).Methods("PUT")

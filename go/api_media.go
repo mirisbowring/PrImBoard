@@ -1,7 +1,10 @@
 package primboard
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -106,14 +109,16 @@ func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 // AddTagByMediaID appends a tag to the specified media
 // creates a new tag if not in the tag document
 func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
-	var t Tag
-	t, status := DecodeTagRequest(w, r, t)
+	var t string
+	t, status := DecodeTagStringRequest(w, r, t)
 	if status != 0 {
 		return
 	}
 
-	if err := t.GetIDCreate(a.DB); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Failed to fetch tag id")
+	t, err := VerifyTag(a.DB, t)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Could not process tag")
+		return
 	}
 
 	// parse ID from route
@@ -124,7 +129,7 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 	// create media model by id to select from db
 	m := Media{ID: id}
 	// append the new tag if not present
-	if err := m.AddTag(a.DB, t.Name); err != nil {
+	if err := m.AddTag(a.DB, t); err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
@@ -135,17 +140,16 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 // AddTagsByMediaID appends multiple tags to the specified media
 // creates a new tag if not in the tag document
 func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
-	var tags []Tag
-	var tagnames []string
-	tags, status := DecodeTagsRequest(w, r, tags)
+	var tags []string
+	tags, status := DecodeTagStringsRequest(w, r, tags)
 	if status != 0 {
 		return
 	}
-	// iterating over all tags and adding them if not exist
-	for _, t := range tags {
-		// getting or creating the new tag
-		t.GetIDCreate(a.DB)
-		tagnames = append(tagnames, t.Name)
+
+	tagnames, err := VerifyTags(a.DB, tags)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
+		return
 	}
 
 	// parse ID from route
@@ -333,7 +337,7 @@ func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 		query.Before, _ = primitive.ObjectIDFromHex(tmp[0])
 	}
 
-	tmp, ok = r.URL.Query()["dsc"]
+	tmp, ok = r.URL.Query()["asc"]
 	if ok && len(tmp[0]) > 1 {
 		if b, _ := strconv.ParseBool(tmp[0]); b {
 			query.ASC = 1
@@ -583,4 +587,87 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	}
 	// Update successful
 	RespondWithJSON(w, http.StatusOK, m)
+}
+
+// UploadMedia handles the webrequest for uploading a file to the api
+func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
+	// grep node
+	node := r.FormValue("node")
+	n := Node{}
+	if err := json.Unmarshal([]byte(node), &n); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed node")
+		return
+	}
+
+	// verfiy node
+	if err := n.GetNode(a.DB, getPermission(w)); err != nil {
+		RespondWithError(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// grep filemeta
+	meta := r.FormValue("filemeta")
+	m := Media{}
+	if err := json.Unmarshal([]byte(meta), &m); err != nil {
+		RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed filemeta")
+		return
+	}
+
+	// verify Tags
+	var err error
+	m.Tags, err = VerifyTags(a.DB, m.Tags)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
+		return
+	}
+
+	// receive file
+	file, handler, err := r.FormFile("uploadfile")
+	if err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer file.Close()
+
+	// setting creation timestamp
+	m.TimestampUpload = int64(time.Now().Unix())
+	// set the username
+	m.Creator = w.Header().Get("user")
+
+	// create user's tmp dir
+	_ = os.Mkdir("tmp/"+m.Creator, 0755)
+	// Create file
+	filename := "tmp/" + m.Creator + "/" + handler.Filename
+	dst, err := os.Create(filename)
+	defer dst.Close()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Copy the uploaded file to the created file on the filesystem
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// file to specified node
+	m, err = addMediaToIpfsNode(filename, m, n)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// try to insert model into db
+	result, err := m.AddMedia(a.DB)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// remove temporary file
+	os.Remove(filename)
+
+	// creation successful
+	RespondWithJSON(w, http.StatusCreated, result)
 }

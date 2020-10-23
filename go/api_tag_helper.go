@@ -33,6 +33,34 @@ func DecodeTagsRequest(w http.ResponseWriter, r *http.Request, t []Tag) ([]Tag, 
 	return t, 0
 }
 
+// DecodeTagStringRequest decodes the api request into the passed object
+// responds with decode error if occurs
+// status 0 => ok || status 1 => error
+func DecodeTagStringRequest(w http.ResponseWriter, r *http.Request, t string) (string, int) {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&t); err != nil {
+		// an decode error occured
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return "", 1
+	}
+	defer r.Body.Close()
+	return t, 0
+}
+
+// DecodeTagStringsRequest decodes the api request into the passed slice
+// responds with decode error if occurs
+// status 0 => ok || status 1 => error
+func DecodeTagStringsRequest(w http.ResponseWriter, r *http.Request, t []string) ([]string, int) {
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&t); err != nil {
+		// an decode error occured
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return nil, 1
+	}
+	defer r.Body.Close()
+	return t, 0
+}
+
 // DecodeTagMediaMapRequest decodes the api request into the passed slice
 // responds with decode error if occurs
 // status 0 => ok || status 1 => error

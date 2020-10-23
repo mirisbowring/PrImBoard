@@ -2,15 +2,16 @@ package primboard
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
 )
 
 // AddTag handles the webrequest for Tag creation
 func (a *App) AddTag(w http.ResponseWriter, r *http.Request) {
-	var t Tag
+	var t string
 	// decode request into model
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
@@ -19,13 +20,14 @@ func (a *App) AddTag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
+	tmp := Tag{Name: t}
 	// name is mandatory
-	if t.Name == "" {
+	if tmp.Name == "" {
 		RespondWithError(w, http.StatusBadRequest, "Tagname cannot be empty")
 		return
 	}
 	// try to insert model into db
-	result, err := t.AddTag(a.DB)
+	result, err := tmp.AddTag(a.DB)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -90,7 +92,12 @@ func (a *App) GetTagsByName(w http.ResponseWriter, r *http.Request) {
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, tags)
+	// clean to string slice
+	var tagnames []string
+	for _, tag := range tags {
+		tagnames = append(tagnames, tag.Name)
+	}
+	RespondWithJSON(w, http.StatusOK, tagnames)
 }
 
 // UpdateTagByID handles the webrequest for updating the Tag with the passed request body

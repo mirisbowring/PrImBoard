@@ -13,3 +13,5 @@
 
 # Custom exclusions
 env.json
+
+tmp/*/**

@@ -27,6 +27,7 @@ type Media struct {
 	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
+	ContentType     string               `json:"contentType,omitempty" bson:"contentType,omitempty"`
 	Tags            []string             `json:"tags,omitempty" bson:"tags,omitempty"`
 	Users           []User               `json:"users,omitempty"`
 	Groups          []UserGroup          `json:"groups,omitempty"`
@@ -47,26 +48,10 @@ var MediaProject = bson.M{
 	"urlThumb":        1,
 	"type":            1,
 	"format":          1,
+	"contentType":     1,
 	"tags":            1,
 	"users":           UserProject,
 	"groups":          UserGroupProject,
-}
-
-// CreatePermissionFilter creates a filter bson that matches the owner and it's groups
-func CreatePermissionFilter(groups []primitive.ObjectID, user string) bson.M {
-	filters := []bson.M{}
-	// username must be passed
-	if user == "" {
-		return bson.M{}
-	}
-	filters = append(filters, bson.M{"creator": user})
-	// add groups if passed
-	if groups != nil && len(groups) > 0 {
-		filters = append(filters, bson.M{"groupIDs": bson.M{"$in": groups}})
-	}
-
-	return bson.M{"$or": filters}
-
 }
 
 // name of the mongo collection

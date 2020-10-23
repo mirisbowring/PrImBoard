@@ -8,6 +8,44 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+// AddIPFSNodeByUser adds an ipfs-node setting to the users settings
+func (a *App) AddIPFSNodeByUsername(w http.ResponseWriter, r *http.Request) {
+	// try to parse node
+	var ipfs IPFSNode
+	ipfs, status := DecodeIPFSNodeRequest(w, r, ipfs)
+	if status != 0 {
+		return
+	}
+
+	var u User
+	// parse request
+	vars := mux.Vars(r)
+	// create model by passed username
+	u = User{Username: vars["username"]}
+	// try to select model
+	if err := u.GetUser(a.DB); err != nil {
+		switch err {
+		case mongo.ErrNoDocuments:
+			// model not found
+			RespondWithError(w, http.StatusNotFound, "User not found")
+		default:
+			// another error occured
+			RespondWithError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+
+	if err := u.AddIPFSNode(ipfs); err != nil {
+		// IPFSNode Setting is not valid
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+	}
+	// Save changes
+	u.Save(a.DB)
+
+	RespondWithJSON(w, http.StatusOK, u)
+
+}
+
 // CreateUser handles the webrequest for user creation
 func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var u User
@@ -50,6 +88,10 @@ func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// create model by passed username
 	u := User{Username: vars["username"]}
+	u, status := a.parseUserSelect(w, r, true)
+	if status > 0 {
+		return
+	}
 	// try to delete model
 	result, err := u.DeleteUser(a.DB)
 	if err != nil {
@@ -60,22 +102,35 @@ func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	RespondWithJSON(w, http.StatusOK, result)
 }
 
+// GetIPFSNodesByUsername returns all IPFSNodes for the current user
+func (a *App) GetIPFSNodesByUsername(w http.ResponseWriter, r *http.Request) {
+	// parse request an retrieve user
+	u, status := a.parseUserSelect(w, r, true)
+	if status > 0 {
+		// cancel request if error occured
+		return
+	}
+
+	RespondWithJSON(w, http.StatusOK, u.Settings.IPFSNodes)
+}
+
+func (a *App) GetSettingsByUsername(w http.ResponseWriter, r *http.Request) {
+	// parse request an retrieve user
+	u, status := a.parseUserSelect(w, r, true)
+	if status > 0 {
+		// cancel request if error occured
+		return
+	}
+
+	RespondWithJSON(w, http.StatusOK, u.Settings)
+}
+
 // GetUserByUsername handles the webrequest for receiving user model by username
 func (a *App) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	// create model by passed username
-	u := User{Username: vars["username"]}
-	// try to select model
-	if err := u.GetUser(a.DB); err != nil {
-		switch err {
-		case mongo.ErrNoDocuments:
-			// model not found
-			RespondWithError(w, http.StatusNotFound, "User not found")
-		default:
-			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
-		}
+	// parse request an retrieve user
+	u, status := a.parseUserSelect(w, r, false)
+	if status > 0 {
+		// cancel request if error occured
 		return
 	}
 	// could select user from mongo
