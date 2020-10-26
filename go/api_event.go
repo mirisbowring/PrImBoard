@@ -75,7 +75,7 @@ func (a *App) GetEventByID(w http.ResponseWriter, r *http.Request) {
 	// create model by passed id
 	e := Event{ID: id}
 	// try to select user
-	if err := e.GetEvent(a.DB); err != nil {
+	if err := e.GetEvent(a.DB, getPermission(w)); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -120,7 +120,7 @@ func (a *App) MapTagsToEvents(w http.ResponseWriter, r *http.Request) {
 	username := w.Header().Get("user")
 	// iterating over all events and add them if not exist
 	for _, e := range tem.Events {
-		if err := e.GetEventCreate(a.DB, username); err != nil {
+		if err := e.GetEventCreate(a.DB, getPermission(w), username); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -153,18 +153,28 @@ func (a *App) UpdateEventByID(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&ue); err != nil {
 		// error occured during encoding
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		RespondWithError(w, http.StatusBadRequest, "invalid request payload")
 		return
 	}
 	defer r.Body.Close()
+	// verify that no other object will be overwritten
+	if ue.ID != id {
+		RespondWithError(w, http.StatusBadRequest, "id's do not match")
+		return
+	}
 	// trying to update model with requested body
 	e := Event{ID: id}
-	result, err := e.UpdateEvent(a.DB, ue)
+	_, err := e.UpdateEvent(a.DB, ue, getPermission(w))
 	if err != nil {
 		// Error occured during update
 		RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// trying to select updated event
+	if err = e.GetEvent(a.DB, getPermission(w)); err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, result)
+	RespondWithJSON(w, http.StatusOK, e)
 }

@@ -26,6 +26,21 @@ type Event struct {
 	URLThumb          string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 }
 
+// EventProject is a bson representation of the event object
+var EventProject = bson.M{
+	"id":                1,
+	"title":             1,
+	"description":       1,
+	"comments":          1,
+	"creator":           1,
+	"groups":            1,
+	"timestampCreation": 1,
+	"timestampStart":    1,
+	"timestampEnd":      1,
+	"url":               1,
+	"urlThumb":          1,
+}
+
 // name of the mongo collection
 var eventColName = "event"
 
@@ -96,19 +111,41 @@ func GetAllEvents(db *mongo.Database) ([]Event, error) {
 }
 
 // GetEvent returns the specified entry from the mongodb
-func (e *Event) GetEvent(db *mongo.Database) error {
+func (e *Event) GetEvent(db *mongo.Database, permission bson.M) error {
+	// create pipeline
+	pipeline, err := createPermissionProjectPipeline(permission, e.ID, EventProject)
+	if err != nil {
+		return err
+	}
+	opts := options.Aggregate()
 	conn := GetColCtx(eventColName, db, 30)
-	filter := bson.M{"_id": e.ID}
-	err := conn.Col.FindOne(conn.Ctx, filter).Decode(&e)
+	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
+	if err != nil {
+		defer conn.Cancel()
+		return err
+	}
+	var found = false
+	for cursor.Next(conn.Ctx) {
+		err := cursor.Decode(&e)
+		if err != nil {
+			defer conn.Cancel()
+			return err
+		}
+		found = true
+		break
+	}
 	defer conn.Cancel()
-	return err
+	if !found {
+		return errors.New("no results")
+	}
+	return nil
 }
 
 // GetEventCreate selects the passed event from database -> creates if not exist
-func (e *Event) GetEventCreate(db *mongo.Database, creator string) error {
+func (e *Event) GetEventCreate(db *mongo.Database, permission bson.M, creator string) error {
 	// read event if ID was specified
 	if e.ID.Hex() != "" {
-		if err := e.GetEvent(db); err != nil {
+		if err := e.GetEvent(db, permission); err != nil {
 			switch err {
 			case mongo.ErrNoDocuments:
 				// event does not exist and should be created
@@ -132,7 +169,7 @@ func (e *Event) GetEventCreate(db *mongo.Database, creator string) error {
 		return err
 	}
 	e.ID = res.InsertedID.(primitive.ObjectID)
-	if err = e.GetEvent(db); err != nil {
+	if err = e.GetEvent(db, permission); err != nil {
 		return err
 	}
 	return nil
@@ -185,7 +222,11 @@ func GetEventsByKeyword(db *mongo.Database, permission bson.M, keyword string, l
 }
 
 // UpdateEvent updates the record with the passed one
-func (e *Event) UpdateEvent(db *mongo.Database, ue Event) (*mongo.UpdateResult, error) {
+func (e *Event) UpdateEvent(db *mongo.Database, ue Event, permission bson.M) (*mongo.UpdateResult, error) {
+	// check if user is allowed to select this node
+	if err := e.GetEvent(db, permission); err != nil {
+		return nil, err
+	}
 	conn := GetColCtx(eventColName, db, 30)
 	filter := bson.M{"_id": e.ID}
 	update := bson.M{"$set": ue}
