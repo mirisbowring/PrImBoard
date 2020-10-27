@@ -10,7 +10,7 @@ import (
 // GetUserGroupAPI handles possible errors during the select and writes Responses
 func (ug *UserGroup) GetUserGroupAPI(w http.ResponseWriter, db *mongo.Database) int {
 	// try to select user
-	if err := ug.GetUserGroup(db); err != nil {
+	if err := ug.GetUserGroup(db, getPermission(w)); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found

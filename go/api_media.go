@@ -494,6 +494,46 @@ func (a *App) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+// MapGroupsToMedia maps an media slice to each event entry
+func (a *App) MapGroupsToMedia(w http.ResponseWriter, r *http.Request) {
+	mgm, status := DecodeMediaGroupMapRequest(w, r)
+	if status != 0 {
+		return
+	}
+
+	var groupIDs []primitive.ObjectID
+	// iterating over all groups
+	for _, g := range mgm.Groups {
+		if err := g.GetUserGroup(a.DB, getPermission(w)); err != nil {
+			RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		groupIDs = append(groupIDs, g.ID)
+	}
+	// parsing ids
+	mediaIDs, err := ParseIDs(mgm.MediaIDs)
+	if err != nil {
+		RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// execute bulk update
+	_, err = BulkAddMediaGroup(a.DB, mediaIDs, groupIDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		return
+	}
+
+	// select updated documents
+	media, err := GetMediaByIDs(a.DB, mediaIDs, getPermission(w))
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	RespondWithJSON(w, http.StatusOK, media)
+	return
+}
+
 // MapTagsToMedia adds a list of tags to a list of media
 func (a *App) MapTagsToMedia(w http.ResponseWriter, r *http.Request) {
 	tmm, status := DecodeTagMediaMapRequest(w, r)

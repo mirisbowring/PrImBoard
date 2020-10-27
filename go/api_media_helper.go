@@ -46,6 +46,21 @@ func DecodeMediasRequest(w http.ResponseWriter, r *http.Request) ([]Media, int) 
 	return m, 0
 }
 
+// DecodeMediaGroupMapRequest decodes the api request into the passed slice
+// responds with decode error if occurs
+// status 0 => ok || status 1 => error
+func DecodeMediaGroupMapRequest(w http.ResponseWriter, r *http.Request) (MediaGroupMap, int) {
+	var mgm MediaGroupMap
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&mgm); err != nil {
+		// an decode error occured
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return mgm, 1
+	}
+	defer r.Body.Close()
+	return mgm, 0
+}
+
 // addMediaToIpfsNode uploads the given file to the specified ipfs node.
 // The passed media model will be completed with path and hashes.
 func addMediaToIpfsNode(file string, media Media, node Node) (Media, error) {

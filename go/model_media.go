@@ -33,6 +33,18 @@ type Media struct {
 	Groups          []UserGroup          `json:"groups,omitempty"`
 }
 
+// MediaEventMap is used to map an array of events to an array of media
+type MediaEventMap struct {
+	Events   []Event  `json:"events,omitempty"`
+	MediaIDs []string `json:"mediaIDs,omitempty"`
+}
+
+// MediaGroupMap is used to map an array of groups to an array of media
+type MediaGroupMap struct {
+	Groups   []UserGroup `json:"groups,omitempty"`
+	MediaIDs []string    `json:"mediaIDs,omitempty"`
+}
+
 //MediaProject is a bson representation of the $project aggregation for mongodb
 var MediaProject = bson.M{
 	"_id":             1,
@@ -158,7 +170,7 @@ func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID
 	return res, nil
 }
 
-// BulkAddMediaEvent bulk operates an add Tags to  many media ids
+// BulkAddMediaEvent bulk operates an add events to many media ids
 func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
 	conn := GetColCtx(mediaColName, db, 30)
 	opts := options.BulkWrite().SetOrdered(false)
@@ -169,6 +181,29 @@ func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventI
 			{"_id": id},
 			permission}}
 		update := bson.M{"$addToSet": bson.M{"events": bson.M{"$each": eventIDs}}}
+		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
+	}
+	// execute bulk update
+	res, err := conn.Col.BulkWrite(conn.Ctx, models, opts)
+	defer conn.Cancel()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return res, nil
+}
+
+// BulkAddMediaGroup bulk operates an adds groups to many media ids
+func BulkAddMediaGroup(db *mongo.Database, mediaIDs []primitive.ObjectID, groupIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	conn := GetColCtx(mediaColName, db, 30)
+	opts := options.BulkWrite().SetOrdered(false)
+	// create update list
+	models := []mongo.WriteModel{}
+	for _, id := range mediaIDs {
+		filter := bson.M{"$and": []bson.M{
+			{"_id": id},
+			permission}}
+		update := bson.M{"$addToSet": bson.M{"groupIDs": bson.M{"$each": groupIDs}}}
 		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
 	}
 	// execute bulk update

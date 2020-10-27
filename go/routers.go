@@ -27,6 +27,7 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/media/byids", a.Authenticate(http.HandlerFunc(a.GetMediaByIDs), false)).Methods("GET")
 	a.Router.Handle("/api/v1/media/maptags", a.Authenticate(http.HandlerFunc(a.MapTagsToMedia), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/mapevents", a.Authenticate(http.HandlerFunc(a.MapEventsToMedia), false)).Methods("POST")
+	a.Router.Handle("/api/v1/media/mapgroups", a.Authenticate(http.HandlerFunc(a.MapGroupsToMedia), false)).Methods("POST")
 	a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.DeleteMediaByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.GetMediaByID), false)).Methods("GET")
 	// a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.UpdateMediaByID), false)).Methods("PUT")

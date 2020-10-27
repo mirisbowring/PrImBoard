@@ -52,12 +52,34 @@ func (ug *UserGroup) DeleteUserGroup(db *mongo.Database) (*mongo.DeleteResult, e
 }
 
 // GetUserGroup returns the specified entry from the mongodb
-func (ug *UserGroup) GetUserGroup(db *mongo.Database) error {
+func (ug *UserGroup) GetUserGroup(db *mongo.Database, permission bson.M) error {
+	// create pipeline
+	pipeline, err := createPermissionProjectPipeline(permission, ug.ID, UserGroupProject)
+	if err != nil {
+		return err
+	}
+	opts := options.Aggregate()
 	conn := GetColCtx(ugColName, db, 30)
-	filter := bson.M{"_id": ug.ID}
-	err := conn.Col.FindOne(conn.Ctx, filter).Decode(&ug)
+	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
+	if err != nil {
+		defer conn.Cancel()
+		return err
+	}
+	var found = false
+	for cursor.Next(conn.Ctx) {
+		err := cursor.Decode(&ug)
+		if err != nil {
+			defer conn.Cancel()
+			return err
+		}
+		found = true
+		break
+	}
 	defer conn.Cancel()
-	return err
+	if !found {
+		return errors.New("no results")
+	}
+	return nil
 }
 
 // GetUserGroups returns all groups the user is part of
