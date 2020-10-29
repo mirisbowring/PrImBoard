@@ -13,5 +13,6 @@
 
 # Custom exclusions
 env.json
+env-node.json
 
 tmp/*/**

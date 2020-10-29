@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -24,7 +25,7 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 
 	// url and type are mandatory
 	if m.URL == "" || m.Type == "" {
-		RespondWithError(w, http.StatusBadRequest, "URL and type cannot be empty")
+		_http.RespondWithError(w, http.StatusBadRequest, "URL and type cannot be empty")
 		return
 	}
 	// setting creation timestamp
@@ -34,11 +35,11 @@ func (a *App) AddMedia(w http.ResponseWriter, r *http.Request) {
 	// try to insert model into db
 	result, err := m.AddMedia(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	RespondWithJSON(w, http.StatusCreated, result)
+	_http.RespondWithJSON(w, http.StatusCreated, result)
 }
 
 // AddCommentByMediaID appends a comment to the specified media
@@ -52,7 +53,7 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 	c.AddMetadata(w.Header().Get("user"))
 	// verifiy integrity of comment
 	if err := c.IsValid(); err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -66,7 +67,7 @@ func (a *App) AddCommentByMediaID(w http.ResponseWriter, r *http.Request) {
 	// append the new comment
 	m.Comments = append(m.Comments, &c)
 	if err := m.Save(a.DB); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -84,7 +85,7 @@ func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 	// check if description is valid
 	if strings.TrimSpace(m.Description) == "" {
 		// description should not be empty
-		RespondWithError(w, http.StatusBadRequest, "Title cannot be empty!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Title cannot be empty!")
 		return
 	}
 
@@ -99,7 +100,7 @@ func (a *App) AddDescriptionByMediaID(w http.ResponseWriter, r *http.Request) {
 	media.Description = m.Description
 	// append the new tag if not present
 	if err := m.Save(a.DB); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -117,7 +118,7 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 
 	t, err := VerifyTag(a.DB, t)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Could not process tag")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not process tag")
 		return
 	}
 
@@ -130,7 +131,7 @@ func (a *App) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 	m := Media{ID: id}
 	// append the new tag if not present
 	if err := m.AddTag(a.DB, t); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -148,7 +149,7 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 
 	tagnames, err := VerifyTags(a.DB, tags)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
 		return
 	}
 
@@ -161,7 +162,7 @@ func (a *App) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	m := Media{ID: id}
 	// append the new tag if not present
 	if err := m.AddTags(a.DB, tagnames); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -184,7 +185,7 @@ func (a *App) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
 
 	groups, err := GetUserGroupsByIDs(a.DB, IDs)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -199,7 +200,7 @@ func (a *App) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
 
 	// verify that any valid group was specified
 	if IDs == nil {
-		RespondWithError(w, http.StatusBadRequest, "No valid groups specified!")
+		_http.RespondWithError(w, http.StatusBadRequest, "No valid groups specified!")
 		return
 	}
 
@@ -212,7 +213,7 @@ func (a *App) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
 	m := Media{ID: id}
 	// append the new tag if not present
 	if err := m.AddUserGroups(a.DB, IDs); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -229,13 +230,13 @@ func (a *App) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
 
 	// check if timestamp is valid
 	if m.Timestamp == 0 {
-		RespondWithError(w, http.StatusBadRequest, "Creation date cannot be empty!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Creation date cannot be empty!")
 		return
 	}
 
 	// verify that the creation date is not in the future
 	if time.Unix(m.Timestamp, 0).UTC().After(time.Now().UTC()) {
-		RespondWithError(w, http.StatusBadRequest, "Creation date cannot be the future!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Creation date cannot be the future!")
 		return
 	}
 
@@ -250,7 +251,7 @@ func (a *App) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
 	media.Timestamp = m.Timestamp
 	// append the new tag if not present
 	if err := m.Save(a.DB); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -268,7 +269,7 @@ func (a *App) AddTitleByMediaID(w http.ResponseWriter, r *http.Request) {
 	// check if title is valid
 	if strings.TrimSpace(m.Title) == "" {
 		// title should not be empty
-		RespondWithError(w, http.StatusBadRequest, "Title cannot be empty!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Title cannot be empty!")
 		return
 	}
 
@@ -283,7 +284,7 @@ func (a *App) AddTitleByMediaID(w http.ResponseWriter, r *http.Request) {
 	media.Title = m.Title
 	// append the new tag if not present
 	if err := m.Save(a.DB); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
 		return
 	}
 	// success
@@ -302,11 +303,11 @@ func (a *App) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 	// try to delete model
 	result, err := m.DeleteMedia(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }
 
 // GetMedia handles the webrequest for receiving all media
@@ -374,10 +375,10 @@ func (a *App) GetMedia(w http.ResponseWriter, r *http.Request) {
 	// ms, err := GetAllMedia(a.DB)
 	ms, err := GetMediaPage(a.DB, query, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, ms)
+	_http.RespondWithJSON(w, http.StatusOK, ms)
 }
 
 // GetMediaByID handles the webrequest for receiving Media model by id
@@ -394,15 +395,15 @@ func (a *App) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusNotFound, "Media not found")
+			_http.RespondWithError(w, http.StatusNotFound, "Media not found")
 		default:
 			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// could select media from mongo
-	RespondWithJSON(w, http.StatusOK, m)
+	_http.RespondWithJSON(w, http.StatusOK, m)
 }
 
 // GetMediaByIDs handles the webrequest for receiving Media models by ids
@@ -417,10 +418,10 @@ func (a *App) GetMediaByIDs(w http.ResponseWriter, r *http.Request) {
 	}
 	media, err := GetMediaByIDs(a.DB, IDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, media)
+	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
 }
 
@@ -438,19 +439,19 @@ func (a *App) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusNotFound, "Media not found")
+			_http.RespondWithError(w, http.StatusNotFound, "Media not found")
 		default:
 			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	if m.Sha1 != parts[0] {
-		RespondWithError(w, http.StatusForbidden, "Invalid ipfs/id combination!")
+		_http.RespondWithError(w, http.StatusForbidden, "Invalid ipfs/id combination!")
 		return
 	}
 	// could select media from mongo
-	RespondWithJSON(w, http.StatusOK, m)
+	_http.RespondWithJSON(w, http.StatusOK, m)
 }
 
 // MapEventsToMedia maps an media slice to each event entry
@@ -465,7 +466,7 @@ func (a *App) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 	username := w.Header().Get("user")
 	for _, e := range mem.Events {
 		if err := e.GetEventCreate(a.DB, getPermission(w), username); err != nil {
-			RespondWithError(w, http.StatusBadRequest, err.Error())
+			_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		eventIDs = append(eventIDs, e.ID)
@@ -473,24 +474,24 @@ func (a *App) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 	// parsing ids
 	mediaIDs, err := ParseIDs(mem.MediaIDs)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// execute bulk update
 	_, err = BulkAddMediaEvent(a.DB, mediaIDs, eventIDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	// select updated documents
 	media, err := GetMediaByIDs(a.DB, mediaIDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, media)
+	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
 }
 
@@ -505,7 +506,7 @@ func (a *App) MapGroupsToMedia(w http.ResponseWriter, r *http.Request) {
 	// iterating over all groups
 	for _, g := range mgm.Groups {
 		if err := g.GetUserGroup(a.DB, getPermission(w)); err != nil {
-			RespondWithError(w, http.StatusBadRequest, err.Error())
+			_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		groupIDs = append(groupIDs, g.ID)
@@ -513,24 +514,24 @@ func (a *App) MapGroupsToMedia(w http.ResponseWriter, r *http.Request) {
 	// parsing ids
 	mediaIDs, err := ParseIDs(mgm.MediaIDs)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// execute bulk update
 	_, err = BulkAddMediaGroup(a.DB, mediaIDs, groupIDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	// select updated documents
 	media, err := GetMediaByIDs(a.DB, mediaIDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, media)
+	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
 }
 
@@ -549,22 +550,22 @@ func (a *App) MapTagsToMedia(w http.ResponseWriter, r *http.Request) {
 	// parsing ids
 	IDs, err := ParseIDs(tmm.IDs)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	// execute bulk update
 	_, err = BulkAddTagMedia(a.DB, tmm.Tags, IDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	media, err := GetMediaByIDs(a.DB, IDs, getPermission(w))
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, media)
+	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
 }
 
@@ -582,7 +583,7 @@ func (a *App) UpdateMediaByHash(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := um.checkComments(w.Header().Get("user")); err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer r.Body.Close()
@@ -591,11 +592,11 @@ func (a *App) UpdateMediaByHash(w http.ResponseWriter, r *http.Request) {
 	err := m.UpdateMedia(a.DB, um)
 	if err != nil {
 		// Error occured during update
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, m)
+	_http.RespondWithJSON(w, http.StatusOK, m)
 }
 
 // UpdateMediaByID handles the webrequest for updating the Media with the passed
@@ -613,7 +614,7 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := um.checkComments(w.Header().Get("user")); err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer r.Body.Close()
@@ -622,11 +623,11 @@ func (a *App) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 	err := m.UpdateMedia(a.DB, um)
 	if err != nil {
 		// Error occured during update
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, m)
+	_http.RespondWithJSON(w, http.StatusOK, m)
 }
 
 // UploadMedia handles the webrequest for uploading a file to the api
@@ -635,13 +636,13 @@ func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	node := r.FormValue("node")
 	n := Node{}
 	if err := json.Unmarshal([]byte(node), &n); err != nil {
-		RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed node")
+		_http.RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed node")
 		return
 	}
 
 	// verfiy node
 	if err := n.GetNode(a.DB, getPermission(w)); err != nil {
-		RespondWithError(w, http.StatusUnauthorized, err.Error())
+		_http.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
 
@@ -649,7 +650,7 @@ func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	meta := r.FormValue("filemeta")
 	m := Media{}
 	if err := json.Unmarshal([]byte(meta), &m); err != nil {
-		RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed filemeta")
+		_http.RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed filemeta")
 		return
 	}
 
@@ -657,14 +658,14 @@ func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	var err error
 	m.Tags, err = VerifyTags(a.DB, m.Tags)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
 		return
 	}
 
 	// receive file
 	file, handler, err := r.FormFile("uploadfile")
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer file.Close()
@@ -694,14 +695,14 @@ func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	// file to specified node
 	m, err = addMediaToIpfsNode(filename, m, n)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	// try to insert model into db
 	result, err := m.AddMedia(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -709,5 +710,5 @@ func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	os.Remove(filename)
 
 	// creation successful
-	RespondWithJSON(w, http.StatusCreated, result)
+	_http.RespondWithJSON(w, http.StatusCreated, result)
 }

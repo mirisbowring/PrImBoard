@@ -1,15 +1,14 @@
 package primboard
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/mirisbowring/PrImBoard/helper"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
@@ -124,35 +123,28 @@ func MatchesBcrypt(password string, hash string) error {
 	return err
 }
 
-// RespondWithError Creates an error payload and adds the error message to be
-// returned
-func RespondWithError(w http.ResponseWriter, code int, message string) {
-	RespondWithJSON(w, code, map[string]string{"error": message})
-}
+// // RespondWithError Creates an error payload and adds the error message to be
+// // returned
+// func RespondWithError(w http.ResponseWriter, code int, message string) {
+// 	RespondWithJSON(w, code, map[string]string{"error": message})
+// }
 
-// RespondWithJSON parses the passed payload and returns it with the specified
-// code to the client
-func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	//	enableCors(&w)
-	response, _ := json.Marshal(payload)
-	// delete the temporary user key from header
-	w.Header().Del("user")
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
-}
+// // RespondWithJSON parses the passed payload and returns it with the specified
+// // code to the client
+// func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+// 	//	enableCors(&w)
+// 	response, _ := json.Marshal(payload)
+// 	// delete the temporary user key from header
+// 	w.Header().Del("user")
+// 	w.Header().Set("Content-Type", "application/json")
+// 	w.WriteHeader(code)
+// 	w.Write(response)
+// }
 
 // ReadConfig reads all neccessary settings from config file
 func (a *App) ReadConfig() {
-	f, err := os.Open(config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-	//decode file content into go object
-	decoder := json.NewDecoder(f)
-	err = decoder.Decode(&a.Config)
-	if err != nil {
+	if err := helper.ReadJSONConfig(config).Decode(&a.Config); err != nil {
+		log.Println("could not parse config file: " + config)
 		log.Fatal(err)
 	}
 }
