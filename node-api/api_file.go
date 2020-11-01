@@ -1,7 +1,6 @@
 package node
 
 import (
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,38 +12,43 @@ import (
 
 // addFile writes the transmitted file to the filesystem for the user
 func (a *App) addFile(w http.ResponseWriter, r *http.Request) {
-	// grep node
+	// get file
 	file, handler, err := r.FormFile("uploadfile")
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err.Error(),
+			"formfile": "updloadfile",
+			"error":    err.Error(),
 		}).Errorf("error during file transmission")
 		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	defer file.Close()
-	// get username from header
-	username := w.Header().Get("user")
-	// create users dir if not exist
-	path := filepath.Join(a.Config.BasePath, username, "own")
-	_ = os.MkdirAll(path, os.ModePerm)
-	// create file
-	filename := filepath.Join(path, handler.Filename)
-	dst, err := os.Create(filename)
-	defer dst.Close()
+
+	// get thumb
+	fileThumb, handlerThumb, err := r.FormFile("uploadthumb")
 	if err != nil {
-		log.Errorf("could not create <%s>", filename)
-		_http.RespondWithError(w, http.StatusInternalServerError, "could not create file")
+		log.WithFields(log.Fields{
+			"formfile": "uploadthumb",
+			"error":    err.Error(),
+		}).Errorf("error during file transmission")
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// Copy the uploaded file to the created file on the filesystem
-	if _, err := io.Copy(dst, file); err != nil {
-		log.Errorf("could not write <%s> to filesystem", filename)
-		_http.RespondWithError(w, http.StatusInternalServerError, "could not write file to filesystem")
+	defer file.Close()
+
+	// parse username
+	username := r.FormValue("username")
+	if username == "" {
+		_http.RespondWithError(w, http.StatusBadRequest, "username must be specified")
 		return
 	}
+
+	// create original
+	a.createFile(file, handler, username, "original", w)
+	// create thumbnail
+	a.createFile(fileThumb, handlerThumb, username, "thumb", w)
+
 	// respond success
-	log.Infof("added <%s> to filesystem", filename)
 	_http.RespondWithJSON(w, http.StatusCreated, "upload was successfull")
 }
 

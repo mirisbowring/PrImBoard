@@ -3,6 +3,8 @@ package primboard
 import (
 	"encoding/json"
 	"net/http"
+
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 )
 
 // DecodeTagRequest decodes the api request into the passed object
@@ -12,7 +14,7 @@ func DecodeTagRequest(w http.ResponseWriter, r *http.Request, t Tag) (Tag, int) 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return Tag{}, 1
 	}
 	defer r.Body.Close()
@@ -26,7 +28,7 @@ func DecodeTagsRequest(w http.ResponseWriter, r *http.Request, t []Tag) ([]Tag, 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return nil, 1
 	}
 	defer r.Body.Close()
@@ -40,7 +42,7 @@ func DecodeTagStringRequest(w http.ResponseWriter, r *http.Request, t string) (s
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return "", 1
 	}
 	defer r.Body.Close()
@@ -54,7 +56,7 @@ func DecodeTagStringsRequest(w http.ResponseWriter, r *http.Request, t []string)
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return nil, 1
 	}
 	defer r.Body.Close()
@@ -69,7 +71,7 @@ func DecodeTagMediaMapRequest(w http.ResponseWriter, r *http.Request) (TagMediaM
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tmm); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return tmm, 1
 	}
 	defer r.Body.Close()

@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mirisbowring/PrImBoard/helper"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 )
 
 // AddUserGroup handles the webrequest for usergroup creation
@@ -14,25 +16,25 @@ func (a *App) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&ug); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 
 	// verify the usergroup
 	if err := ug.Verify(a.DB); err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	// try to insert model into db skipVerify because already verified
 	result, err := ug.AddUserGroup(a.DB, true)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	RespondWithJSON(w, http.StatusCreated, result)
+	_http.RespondWithJSON(w, http.StatusCreated, result)
 }
 
 // AddUserToUserGroupByID adds a User to the specified usergroup
@@ -46,7 +48,7 @@ func (a *App) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// check if user does Exists
 	if !u.Exists(a.DB) {
 		// user does not exist
-		RespondWithError(w, http.StatusBadRequest, "Could not add user!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Could not add user!")
 		return
 	}
 
@@ -64,13 +66,13 @@ func (a *App) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 
 	// verify that user is owner
 	if w.Header().Get("user") != ug.Creator {
-		RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
+		_http.RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
 		return
 	}
 
 	// check if user already in group
-	if _, found := Find(ug.Users, u.Username); found {
-		RespondWithError(w, http.StatusFound, "User already added to usergroup!")
+	if _, found := helper.FindInSlice(ug.Users, u.Username); found {
+		_http.RespondWithError(w, http.StatusFound, "User already added to usergroup!")
 		return
 	}
 
@@ -78,7 +80,7 @@ func (a *App) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	ug.Users = append(ug.Users, u.Username)
 	//skipVerify because we manually added a single username and checked uniqueness
 	if err := ug.Save(a.DB, true); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// success
@@ -96,12 +98,12 @@ func (a *App) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// select all existing users from db that matches the given array
 	u, err := GetUsers(a.DB, u)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// verify, that any user was selected
 	if len(u) == 0 {
-		RespondWithError(w, http.StatusBadRequest, "No valid users specified!")
+		_http.RespondWithError(w, http.StatusBadRequest, "No valid users specified!")
 		return
 	}
 
@@ -119,7 +121,7 @@ func (a *App) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 
 	// verify that user is owner
 	if w.Header().Get("user") != ug.Creator {
-		RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
+		_http.RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
 		return
 	}
 
@@ -131,7 +133,7 @@ func (a *App) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
 
 	//skipVerify because we manually added a single username and checked uniqueness
 	if err := ug.Save(a.DB, true); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// success
@@ -150,11 +152,11 @@ func (a *App) DeleteUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	// try to delete model
 	result, err := ug.DeleteUserGroup(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }
 
 //GetUserGroupByID handles the webrequest for receiving usergroup model by id
@@ -170,7 +172,7 @@ func (a *App) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// could select user from mongo
-	RespondWithJSON(w, http.StatusOK, ug)
+	_http.RespondWithJSON(w, http.StatusOK, ug)
 }
 
 // GetUserGroups returns all groups, the current user is assigned to
@@ -180,11 +182,11 @@ func (a *App) GetUserGroups(w http.ResponseWriter, r *http.Request) {
 	// read groups from db
 	groups, err := GetUserGroups(a.DB, username)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// success
-	RespondWithJSON(w, http.StatusOK, groups)
+	_http.RespondWithJSON(w, http.StatusOK, groups)
 }
 
 // GetUserGroupsByName returns available Tags by their name, starting with
@@ -194,10 +196,10 @@ func (a *App) GetUserGroupsByName(w http.ResponseWriter, r *http.Request) {
 	keyword := vars["name"]
 	groups, err := GetUserGroupsByKeyword(a.DB, keyword, a.Config.TagPreviewLimit)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, groups)
+	_http.RespondWithJSON(w, http.StatusOK, groups)
 }
 
 // RemoveUserFromUserGroupByID adds a User to the specified usergroup
@@ -226,7 +228,7 @@ func (a *App) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.Request
 	ug.Users = RemoveString(ug.Users, u.Username)
 
 	if err := ug.Save(a.DB, false); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -261,7 +263,7 @@ func (a *App) RemoveUsersFromUserGroupByID(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := ug.Save(a.DB, false); err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -282,14 +284,14 @@ func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&uug); err != nil {
 		// error occured during encoding
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
 		return
 	}
 	defer r.Body.Close()
 
 	// verify the usergroup
 	if err := uug.Verify(a.DB); err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -298,9 +300,9 @@ func (a *App) UpdateUserGroupByID(w http.ResponseWriter, r *http.Request) {
 	result, err := ug.UpdateUserGroup(a.DB, uug, true)
 	if err != nil {
 		// Error occured during update
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }

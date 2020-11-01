@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -16,24 +17,24 @@ func (a *App) AddTag(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&t); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	tmp := Tag{Name: t}
 	// name is mandatory
 	if tmp.Name == "" {
-		RespondWithError(w, http.StatusBadRequest, "Tagname cannot be empty")
+		_http.RespondWithError(w, http.StatusBadRequest, "Tagname cannot be empty")
 		return
 	}
 	// try to insert model into db
 	result, err := tmp.AddTag(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	RespondWithJSON(w, http.StatusCreated, result)
+	_http.RespondWithJSON(w, http.StatusCreated, result)
 }
 
 // DeleteTagByID handles the webrequest for Tag deletion
@@ -46,11 +47,11 @@ func (a *App) DeleteTagByID(w http.ResponseWriter, r *http.Request) {
 	// try to delete model
 	result, err := t.DeleteTag(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }
 
 // GetTagByID handles the webrequest for receiving Tag model by id
@@ -65,15 +66,15 @@ func (a *App) GetTagByID(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusNotFound, "Tag not found")
+			_http.RespondWithError(w, http.StatusNotFound, "Tag not found")
 		default:
 			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// could select user from mongo
-	RespondWithJSON(w, http.StatusOK, t)
+	_http.RespondWithJSON(w, http.StatusOK, t)
 }
 
 // GetTags returns all Tags available
@@ -89,7 +90,7 @@ func (a *App) GetTagsByName(w http.ResponseWriter, r *http.Request) {
 	keyword := vars["name"]
 	tags, err := GetTagsByKeyword(a.DB, keyword, a.Config.TagPreviewLimit)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// clean to string slice
@@ -97,7 +98,7 @@ func (a *App) GetTagsByName(w http.ResponseWriter, r *http.Request) {
 	for _, tag := range tags {
 		tagnames = append(tagnames, tag.Name)
 	}
-	RespondWithJSON(w, http.StatusOK, tagnames)
+	_http.RespondWithJSON(w, http.StatusOK, tagnames)
 }
 
 // UpdateTagByID handles the webrequest for updating the Tag with the passed request body
@@ -110,7 +111,7 @@ func (a *App) UpdateTagByID(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&ut); err != nil {
 		// error occured during encoding
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
 		return
 	}
 	defer r.Body.Close()
@@ -119,9 +120,9 @@ func (a *App) UpdateTagByID(w http.ResponseWriter, r *http.Request) {
 	result, err := t.UpdateTag(a.DB, ut)
 	if err != nil {
 		// Error occured during update
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }

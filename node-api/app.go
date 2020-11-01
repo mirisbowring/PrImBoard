@@ -1,36 +1,61 @@
 package node
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/mirisbowring/PrImBoard/helper"
+	"github.com/mirisbowring/PrImBoard/helper/models"
+	m "github.com/mirisbowring/PrImBoard/helper/models"
 )
 
 // App struct to maintain router
 type App struct {
 	Router *mux.Router
-	Config *Config
-}
-
-// Config struct that stores every api related settings
-type Config struct {
-	BasePath string `json:"basePath"`
+	Config *m.NodeConfig
 }
 
 // Run starts the application on the passed address with the inherited router
 // WARN: router must be initialized first
 func (a *App) Run(addr string) {
-
+	log.Fatal(
+		http.ListenAndServe(
+			addr,
+			handlers.CORS(
+				handlers.AllowedHeaders(
+					[]string{
+						"X-Requested-With",
+						"Content-Type",
+						"Authorization",
+					},
+				),
+				handlers.AllowedMethods(
+					[]string{
+						"DELETE",
+						"GET",
+						"POST",
+						"PUT",
+						"HEAD",
+						"OPTIONS",
+					},
+				),
+				handlers.AllowedOrigins(
+					a.Config.AllowedOrigins,
+				),
+				handlers.AllowCredentials(),
+			)(a.Router)))
 }
 
 // Initialize initializes application related content
 // - router initialization
-func (a *App) Initialize(config string) {
+func (a *App) Initialize(config models.NodeConfig) {
 	log.Info("Starting Initialization")
-	a.readConfig(config)
+	a.Config = &config
 	a.InitializeRoutes()
+	a.authenticateToGateway()
 }
 
 // Authenticate is a middleware to pre-authenticate routes via the session token
@@ -41,10 +66,20 @@ func (a *App) Authenticate(h http.Handler, logout bool) http.Handler {
 	})
 }
 
-// ReadConfig reads all neccessary settings from config file
-func (a *App) readConfig(config string) {
-	if err := helper.ReadJSONConfig(config).Decode(&a.Config); err != nil {
-		log.Println("could not parse config file: " + config)
-		log.Fatal(err)
+// authenticateToGateway authenticates the node against the central gateway
+func (a *App) authenticateToGateway() {
+	log.Info("authenticating to gateway")
+	client := &http.Client{}
+	// encode setting to json
+	api := fmt.Sprintf("%s/api/v2/infrastructure/node/%s/authenticate", a.Config.GatewayURL, a.Config.NodeAuth.ID)
+	req, _ := http.NewRequest("POST", api, strings.NewReader(a.Config.NodeAuth.Secret))
+	req.Header.Set("Content-Type", "application/json")
+	// send request
+	res, _ := client.Do(req)
+	if res.StatusCode != 200 {
+		log.WithFields(log.Fields{
+			"status-code": res.StatusCode,
+		}).Fatal("could not authenticate to gateway")
 	}
+	log.Info("authentication to gateway successfull")
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -14,10 +15,10 @@ func (ug *UserGroup) GetUserGroupAPI(w http.ResponseWriter, db *mongo.Database) 
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusNotFound, "Usergroup not found")
+			_http.RespondWithError(w, http.StatusNotFound, "Usergroup not found")
 		default:
 			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return 1
 	}
@@ -31,7 +32,7 @@ func DecodeUserGroupRequest(w http.ResponseWriter, r *http.Request, ug UserGroup
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&ug); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return UserGroup{}, 1
 	}
 	defer r.Body.Close()
@@ -45,7 +46,7 @@ func DecodeUserGroupsRequest(w http.ResponseWriter, r *http.Request, ugs []UserG
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&ugs); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return nil, 1
 	}
 	defer r.Body.Close()

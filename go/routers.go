@@ -12,6 +12,7 @@ func (a *App) InitializeRoutes() {
 	a.Router = mux.NewRouter().StrictSlash(true)
 	// index
 	a.Router.HandleFunc("/api/v1/", a.Index).Methods("GET")
+	a.Router.HandleFunc("/api/v2/", a.Index).Methods("GET")
 	// event
 	a.Router.Handle("/api/v1/event", a.Authenticate(http.HandlerFunc(a.AddEvent), false)).Methods("POST")
 	a.Router.Handle("/api/v1/event/{id}", a.Authenticate(http.HandlerFunc(a.DeleteEventByID), false)).Methods("DELETE")
@@ -72,6 +73,8 @@ func (a *App) InitializeRoutes() {
 	a.Router.Handle("/api/v1/usergroup/{id}/user", a.Authenticate(http.HandlerFunc(a.AddUserToUserGroupByID), false)).Methods("POST")
 	a.Router.Handle("/api/v1/usergroup/{id}/users", a.Authenticate(http.HandlerFunc(a.RemoveUsersFromUserGroupByID), false)).Methods("DELETE")
 	a.Router.Handle("/api/v1/usergroup/{id}/users", a.Authenticate(http.HandlerFunc(a.AddUsersToUserGroupByID), false)).Methods("POST")
+	// infrastructure
+	a.Router.HandleFunc("/api/v2/infrastructure/node/{id}/authenticate", a.AuthenticateNode).Methods("POST")
 }
 
 // Index controller

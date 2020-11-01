@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -16,7 +17,7 @@ func parseID(w http.ResponseWriter, r *http.Request) primitive.ObjectID {
 	vars := mux.Vars(r)
 	id, err := primitive.ObjectIDFromHex(vars["id"])
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, "Could not parse ID from route!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Could not parse ID from route!")
 		return primitive.NilObjectID
 	}
 	return id
@@ -28,7 +29,7 @@ func parseUsername(w http.ResponseWriter, r *http.Request) (User, int) {
 	vars := mux.Vars(r)
 	user := User{Username: vars["username"]}
 	if user.Username == "" {
-		RespondWithError(w, http.StatusBadRequest, "User was not specified!")
+		_http.RespondWithError(w, http.StatusBadRequest, "User was not specified!")
 		return user, 1
 	}
 	return user, 0
@@ -40,7 +41,7 @@ func parseToken(w http.ResponseWriter, r *http.Request) (Invite, int) {
 	vars := mux.Vars(r)
 	invite := Invite{Token: vars["token"]}
 	if invite.Token == "" {
-		RespondWithError(w, http.StatusBadRequest, "Registrationtoken not specified!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Registrationtoken not specified!")
 		return invite, 1
 	}
 	return invite, 0

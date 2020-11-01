@@ -693,11 +693,16 @@ func (a *App) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// file to specified node
-	m, err = addMediaToIpfsNode(filename, m, n)
+	m, err = addMediaToNode(filename, m, n)
 	if err != nil {
-		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not push media to node")
 		return
 	}
+	// m, err = addMediaToIpfsNode(filename, m, n)
+	// if err != nil {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	// 	return
+	// }
 
 	// try to insert model into db
 	result, err := m.AddMedia(a.DB)

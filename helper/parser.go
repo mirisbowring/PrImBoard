@@ -5,17 +5,33 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/mirisbowring/PrImBoard/helper/models"
 )
 
-// ReadJSONConfig tries to open a specified config file
-func ReadJSONConfig(config string) *json.Decoder {
+// ParseConfig parses the config file into the config object
+func ParseConfig(config string) models.Config {
+	var tmp models.Config
+	json, f := ReadJSONFile(config)
+	defer f.Close()
+	if err := json.Decode(&tmp); err != nil {
+		log.WithFields(log.Fields{
+			"config": config,
+			"error":  err.Error(),
+		}).Fatal("could not parse config file")
+	}
+	return tmp
+}
+
+// ReadJSONFile tries to open a specified config file
+func ReadJSONFile(config string) (*json.Decoder, *os.File) {
 	f, err := os.Open(config)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Fatalf("could not open config file: %s", config)
+			"config": config,
+			"error":  err.Error(),
+		}).Fatal("could not open config file")
 	}
-	defer f.Close()
+	// defer f.Close()
 	//decode file content into go object
-	return json.NewDecoder(f)
+	return json.NewDecoder(f), f
 }

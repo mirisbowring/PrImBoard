@@ -3,6 +3,8 @@ package primboard
 import (
 	"encoding/json"
 	"net/http"
+
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 )
 
 // DecodeCommentRequest decodes the api request into the passed object
@@ -12,7 +14,7 @@ func DecodeCommentRequest(w http.ResponseWriter, r *http.Request, c Comment) (Co
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&c); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return Comment{}, 1
 	}
 	defer r.Body.Close()
@@ -26,7 +28,7 @@ func DecodeCommentsRequest(w http.ResponseWriter, r *http.Request, c []Comment) 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&c); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return nil, 1
 	}
 	defer r.Body.Close()

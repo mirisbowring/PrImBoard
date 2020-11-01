@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -14,7 +15,7 @@ func DecodeIPFSNodeRequest(w http.ResponseWriter, r *http.Request, ipfs IPFSNode
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&ipfs); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return IPFSNode{}, 1
 	}
 	defer r.Body.Close()
@@ -28,7 +29,7 @@ func DecodeUserRequest(w http.ResponseWriter, r *http.Request, u User) (User, in
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return User{}, 1
 	}
 	defer r.Body.Close()
@@ -42,7 +43,7 @@ func DecodeUsersRequest(w http.ResponseWriter, r *http.Request, u []User) ([]Use
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return nil, 1
 	}
 	defer r.Body.Close()
@@ -61,7 +62,7 @@ func (a *App) parseUserSelect(w http.ResponseWriter, r *http.Request, verifyUser
 	}
 	// verify that actual user matched requested user path
 	if verifyUser && u.Username != w.Header().Get("user") {
-		RespondWithError(w, http.StatusUnauthorized, "You are not allowed to request information for that user.")
+		_http.RespondWithError(w, http.StatusUnauthorized, "You are not allowed to request information for that user.")
 		return User{}, 1
 	}
 	// try to select model
@@ -69,10 +70,10 @@ func (a *App) parseUserSelect(w http.ResponseWriter, r *http.Request, verifyUser
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusNotFound, "User not found")
+			_http.RespondWithError(w, http.StatusNotFound, "User not found")
 		default:
 			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return User{}, 1
 	}

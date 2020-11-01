@@ -15,6 +15,7 @@ import (
 type Media struct {
 	ID              primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
 	Sha1            string               `json:"sha1,omitempty" bson:"sha1,omitempty"`
+	ThumbnailSha1   string               `json:"thumbnailSha1,omitempty" bson:"thumbnailSha1,omitempty"`
 	Title           string               `json:"title,omitempty" bson:"title,omitempty"`
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
@@ -29,8 +30,10 @@ type Media struct {
 	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
 	ContentType     string               `json:"contentType,omitempty" bson:"contentType,omitempty"`
 	Tags            []string             `json:"tags,omitempty" bson:"tags,omitempty"`
+	NodeIDs         []primitive.ObjectID `json:"nodeIDs,omitempty" bson:"nodeIDs,omitempty"`
 	Users           []User               `json:"users,omitempty"`
 	Groups          []UserGroup          `json:"groups,omitempty"`
+	Nodes           []Node               `json:"nodes,omitempty"`
 }
 
 // MediaEventMap is used to map an array of events to an array of media
@@ -64,6 +67,7 @@ var MediaProject = bson.M{
 	"tags":            1,
 	"users":           UserProject,
 	"groups":          UserGroupProject,
+	"nodes":           NodeProject,
 }
 
 // name of the mongo collection
@@ -336,6 +340,12 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 			"localField":   "groupIDs",
 			"foreignField": "_id",
 			"as":           "groups",
+		}},
+		{"$lookup": bson.M{
+			"from":         "node",
+			"localField":   "nodes",
+			"foreignField": "_id",
+			"as":           "nodes",
 		}},
 		{"$project": MediaProject},
 	}

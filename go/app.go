@@ -3,12 +3,15 @@ package primboard
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/mirisbowring/PrImBoard/helper"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
+	"github.com/mirisbowring/PrImBoard/helper/models"
+	m "github.com/mirisbowring/PrImBoard/helper/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
@@ -21,24 +24,8 @@ var config = "env.json"
 type App struct {
 	Router *mux.Router
 	DB     *mongo.Database
-	Config *Config
-}
-
-// Config struct that stores every api related settings
-type Config struct {
-	Domain               string   `json:"domain"`
-	Port                 int      `json:"port"`
-	MongoURL             string   `json:"mongo_url"`
-	DBName               string   `json:"database_name"`
-	CookiePath           string   `json:"cookie_path"`
-	CookieHTTPOnly       bool     `json:"cookie_http_only"`
-	CookieSecure         bool     `json:"cookie_secure"`
-	CookieTokenTitle     string   `json:"cookie_token_title"`
-	AllowedOrigins       []string `json:"allowed_origins"`
-	TagPreviewLimit      int64    `json:"tag_preview_limit"`
-	SessionRotation      bool     `json:"session_rotation"`
-	DefaultMediaPageSize int      `json:"default_media_page_size"`
-	InviteValidity       int      `json:"invite_validity"`
+	Config *m.APIGatewayConfig
+	Nodes  []Node // stores all authenticated nodes
 }
 
 // Run starts the application on the passed address with the inherited router
@@ -75,8 +62,9 @@ func (a *App) Run(addr string) {
 // Initialize initializes application related content
 // - mongodb connection initialization
 // - router initialization
-func (a *App) Initialize() {
-	a.ReadConfig()
+func (a *App) Initialize(config models.APIGatewayConfig) {
+	log.Info("Starting Initialization")
+	a.Config = &config
 	a.Connect()
 	a.InitializeRoutes()
 	api = a
@@ -100,13 +88,23 @@ func (a *App) Authenticate(h http.Handler, logout bool) http.Handler {
 			h.ServeHTTP(w, r)
 		} else {
 			CloseSession(&w, r)
-			RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
+			_http.RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
 			return
 		}
 	})
 }
 
 // helpers
+
+// GetSession returns the session object for the passed token
+func (a *App) getNode(id primitive.ObjectID) *Node {
+	for _, n := range a.Nodes {
+		if n.ID == id {
+			return &n
+		}
+	}
+	return nil
+}
 
 // HashPassword hashes the passed passwort using bcrypt
 func HashPassword(password string) (hashedPassword string) {
@@ -123,47 +121,11 @@ func MatchesBcrypt(password string, hash string) error {
 	return err
 }
 
-// // RespondWithError Creates an error payload and adds the error message to be
-// // returned
-// func RespondWithError(w http.ResponseWriter, code int, message string) {
-// 	RespondWithJSON(w, code, map[string]string{"error": message})
-// }
-
-// // RespondWithJSON parses the passed payload and returns it with the specified
-// // code to the client
-// func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-// 	//	enableCors(&w)
-// 	response, _ := json.Marshal(payload)
-// 	// delete the temporary user key from header
-// 	w.Header().Del("user")
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(code)
-// 	w.Write(response)
-// }
-
-// ReadConfig reads all neccessary settings from config file
-func (a *App) ReadConfig() {
-	if err := helper.ReadJSONConfig(config).Decode(&a.Config); err != nil {
-		log.Println("could not parse config file: " + config)
-		log.Fatal(err)
-	}
-}
-
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "localhost")
 	// should ask if option (put delete post)
 	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-}
-
-// Find iterates over the slice and returns the position of the element if found
-func Find(slice []string, val string) (int, bool) {
-	for i, item := range slice {
-		if item == val {
-			return i, true
-		}
-	}
-	return -1, false
 }
 
 // UniqueStrings removes all duplicates from a string slice and returns the result

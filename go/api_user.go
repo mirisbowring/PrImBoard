@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -27,22 +28,22 @@ func (a *App) AddIPFSNodeByUsername(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusNotFound, "User not found")
+			_http.RespondWithError(w, http.StatusNotFound, "User not found")
 		default:
 			// another error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
 	if err := u.AddIPFSNode(ipfs); err != nil {
 		// IPFSNode Setting is not valid
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 	}
 	// Save changes
 	u.Save(a.DB)
 
-	RespondWithJSON(w, http.StatusOK, u)
+	_http.RespondWithJSON(w, http.StatusOK, u)
 
 }
 
@@ -53,19 +54,19 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	// username and password are mandatory
 	if u.Username == "" || u.Password == "" {
-		RespondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Username and Password must be set!")
 		return
 	}
 	// verify invite
 	i := Invite{Token: u.Token}
 	if err := i.Invalidate(a.DB); err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	// hash password
@@ -75,11 +76,11 @@ func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// prevent the Token from expiration
 		i.Revalidate(a.DB, a.Config.InviteValidity)
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// creation successful
-	RespondWithJSON(w, http.StatusCreated, result)
+	_http.RespondWithJSON(w, http.StatusCreated, result)
 }
 
 // DeleteUser handles the webrequest for user deletion
@@ -95,11 +96,11 @@ func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// try to delete model
 	result, err := u.DeleteUser(a.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// deletion successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }
 
 // GetIPFSNodesByUsername returns all IPFSNodes for the current user
@@ -111,7 +112,7 @@ func (a *App) GetIPFSNodesByUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RespondWithJSON(w, http.StatusOK, u.Settings.IPFSNodes)
+	_http.RespondWithJSON(w, http.StatusOK, u.Settings.IPFSNodes)
 }
 
 func (a *App) GetSettingsByUsername(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +123,7 @@ func (a *App) GetSettingsByUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RespondWithJSON(w, http.StatusOK, u.Settings)
+	_http.RespondWithJSON(w, http.StatusOK, u.Settings)
 }
 
 // GetUserByUsername handles the webrequest for receiving user model by username
@@ -134,7 +135,7 @@ func (a *App) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// could select user from mongo
-	RespondWithJSON(w, http.StatusOK, u)
+	_http.RespondWithJSON(w, http.StatusOK, u)
 }
 
 // LoginUser Handles the webrequest for logging the user in
@@ -144,13 +145,13 @@ func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&u); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	defer r.Body.Close()
 	// validate that username is not empty to prevent high db load
 	if u.Username == "" {
-		RespondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
+		_http.RespondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
 		return
 	}
 	// read corresponding user from db
@@ -160,30 +161,30 @@ func (a *App) LoginUser(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
-			RespondWithError(w, http.StatusForbidden, "Login Failed!")
+			_http.RespondWithError(w, http.StatusForbidden, "Login Failed!")
 		default:
 			// any other error occured
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 	// hash passed password and compare
 	if err := MatchesBcrypt(u.Password, us.Password); err != nil {
 		// Passwords do not match
-		RespondWithError(w, http.StatusForbidden, "Login Failed!")
+		_http.RespondWithError(w, http.StatusForbidden, "Login Failed!")
 		return
 	}
 	// Create new Session and Cookie
 	SetSessionCookie(&w, r, a.NewSession(u))
 	// assuming that the user was logged in
-	RespondWithJSON(w, http.StatusOK, "Login was successful!")
+	_http.RespondWithJSON(w, http.StatusOK, "Login was successful!")
 
 }
 
 // LogoutUser handles the webrequest for logging the user out
 func (a *App) LogoutUser(w http.ResponseWriter, r *http.Request) {
 	CloseSession(&w, r)
-	RespondWithJSON(w, http.StatusNoContent, "Logout was successfull!")
+	_http.RespondWithJSON(w, http.StatusNoContent, "Logout was successfull!")
 }
 
 // UpdateUser handles the webrequest for updating the user with the passed request body
@@ -195,7 +196,7 @@ func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&uu); err != nil {
 		// error occured during encoding
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid Request payload")
 		return
 	}
 	defer r.Body.Close()
@@ -204,9 +205,9 @@ func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	result, err := u.UpdateUser(a.DB, uu)
 	if err != nil {
 		// Error occured during update
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// Update successful
-	RespondWithJSON(w, http.StatusOK, result)
+	_http.RespondWithJSON(w, http.StatusOK, result)
 }

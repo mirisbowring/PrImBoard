@@ -1,40 +1,83 @@
 package main
 
 import (
+	"flag"
 	"os"
+	"strconv"
 
 	log "github.com/Sirupsen/logrus"
+	gateway "github.com/mirisbowring/PrImBoard/go"
+	"github.com/mirisbowring/PrImBoard/helper"
+	"github.com/mirisbowring/PrImBoard/helper/models"
+	node "github.com/mirisbowring/PrImBoard/node-api"
 )
 
 func main() {
-	log.Info("Server starting...")
+	api := flag.Bool("api", true, "Start api gateway")
+	node := flag.Bool("node", false, "Start node instance")
+	config := flag.String("config", "env.json", "specify config file (default: env.json)")
+	logLevel := flag.String("log", "info", `Set Log Level
+	debug - useful debugging information
+	info - (default) everything noteworthy
+	warn - only warnings are displayed - have an eye on them
+	error - only errors are shown (system is still stable)
+	fatal - only log the fatal message before quitting`)
+	help := flag.Bool("h", false, "shows the help page")
+	flag.Parse()
+
+	if *help {
+		flag.PrintDefaults()
+		return
+	}
+
+	log.SetOutput(os.Stdout)
+
+	switch *logLevel {
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+		break
+	case "info":
+		log.SetLevel(log.InfoLevel)
+		break
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+		break
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+		break
+	case "fatal":
+		log.SetLevel(log.FatalLevel)
+		break
+	default:
+		log.Fatal("unknown log level specified")
+	}
 
 	// Log as JSON instead of the default ASCII formatter.
 	// log.SetFormatter(&log.JSONFormatter{})
 
-	// Output to stdout instead of the default stderr
-	// Can be any io.Writer, see below for File example
-	log.SetOutput(os.Stdout)
+	conf := helper.ParseConfig(*config)
 
-	// Only log the warning severity or above.
-	log.SetLevel(log.WarnLevel)
+	if *node {
+		startNode(conf)
+	}
 
-	log.WithFields(log.Fields{
-		"animal": "walrus",
-		"size":   10,
-	}).Info("A group of walrus emerges from the ocean")
+	if *api {
+		startAPIGateway(conf)
+	}
+}
 
-	log.WithFields(log.Fields{
-		"omg":    true,
-		"number": 122,
-	}).Warn("The group's number increased tremendously!")
+func startAPIGateway(config models.Config) {
+	log.Info("starting api gateway")
 
-	log.WithFields(log.Fields{
-		"omg":    true,
-		"number": 100,
-	}).Fatal("The ice breaks!")
+	a := gateway.App{}
+	a.Initialize(config.APIGatewayConfig)
+	a.Run(":" + strconv.Itoa(a.Config.Port))
+}
 
-	// a := sw.App{}
-	// a.Initialize()
-	// a.Run(":" + strconv.Itoa(a.Config.Port))
+func startNode(config models.Config) {
+	log.Info("starting node")
+
+	a := node.App{}
+	a.Initialize(config.NodeConfig)
+	a.Run(":" + strconv.Itoa(a.Config.Port))
 }

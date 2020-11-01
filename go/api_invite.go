@@ -3,6 +3,7 @@ package primboard
 import (
 	"net/http"
 
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -14,16 +15,16 @@ func (a *App) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 	result, err := i.Init(a.DB, a.Config.InviteValidity)
 	if err != nil {
 		// another error occured
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// select new token
 	i = Invite{ID: result.InsertedID.(primitive.ObjectID)}
 	if err = i.FindID(a.DB); err != nil {
 		// error occured during select
-		RespondWithError(w, http.StatusInternalServerError, err.Error())
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// could select user from mongo
-	RespondWithJSON(w, http.StatusOK, i)
+	_http.RespondWithJSON(w, http.StatusOK, i)
 }

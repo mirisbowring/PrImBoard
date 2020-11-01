@@ -3,6 +3,7 @@ package primboard
 import (
 	"errors"
 
+	"github.com/mirisbowring/PrImBoard/helper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -195,7 +196,7 @@ func (ug *UserGroup) Verify(db *mongo.Database) error {
 		return errors.New("the creator does not exist")
 	}
 	// verify that creator is in group
-	if _, found := Find(ug.Users, ug.Creator); !found {
+	if _, found := helper.FindInSlice(ug.Users, ug.Creator); !found {
 		ug.Users = append(ug.Users, ug.Creator)
 	}
 	// verify that there are no duplicates

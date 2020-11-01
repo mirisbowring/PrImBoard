@@ -3,6 +3,8 @@ package primboard
 import (
 	"encoding/json"
 	"net/http"
+
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 )
 
 // DecodeMediaEventMapRequest decodes the api request into the passed slice
@@ -13,7 +15,7 @@ func DecodeMediaEventMapRequest(w http.ResponseWriter, r *http.Request) (MediaEv
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&mem); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return mem, 1
 	}
 	defer r.Body.Close()
@@ -28,7 +30,7 @@ func DecodeTagEventMapRequest(w http.ResponseWriter, r *http.Request) (TagEventM
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&tem); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return tem, 1
 	}
 	defer r.Body.Close()

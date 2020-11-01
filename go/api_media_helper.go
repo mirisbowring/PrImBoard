@@ -1,17 +1,20 @@
 package primboard
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
-	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 
-	ipfs "github.com/ipfs/go-ipfs-api"
-	h "github.com/mirisbowring/PrImBoard/helper"
+	log "github.com/Sirupsen/logrus"
+
+	"github.com/mirisbowring/PrImBoard/helper"
+	_http "github.com/mirisbowring/PrImBoard/helper/http"
 )
 
 // authCookie stores the temporal cookie object
@@ -24,7 +27,7 @@ func DecodeMediaRequest(w http.ResponseWriter, r *http.Request, m Media) (Media,
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return Media{}, 1
 	}
 	defer r.Body.Close()
@@ -39,7 +42,7 @@ func DecodeMediasRequest(w http.ResponseWriter, r *http.Request) ([]Media, int) 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&m); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return nil, 1
 	}
 	defer r.Body.Close()
@@ -54,65 +57,65 @@ func DecodeMediaGroupMapRequest(w http.ResponseWriter, r *http.Request) (MediaGr
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&mgm); err != nil {
 		// an decode error occured
-		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
 		return mgm, 1
 	}
 	defer r.Body.Close()
 	return mgm, 0
 }
 
-// addMediaToIpfsNode uploads the given file to the specified ipfs node.
-// The passed media model will be completed with path and hashes.
-func addMediaToIpfsNode(file string, media Media, node Node) (Media, error) {
-	// new ipfs shell
-	sh := ipfs.NewShell(node.Address + ":" + strconv.Itoa(node.IPFSAPIPort))
-	// create file pointer
-	r, _ := os.Open(file)
-	// create thumbnail and receive pointer
-	rt, _ := h.Thumbnail(r, 128)
-	// add the thumbnail to the ipfs
-	thumbCid, err := sh.Add(rt)
-	if err != nil {
-		log.Println(err)
-		return Media{}, errors.New("could not upload thumbnail to ipfs node")
-	}
-	r.Close()
+// // addMediaToIpfsNode uploads the given file to the specified ipfs node.
+// // The passed media model will be completed with path and hashes.
+// func addMediaToIpfsNode(file string, media Media, node Node) (Media, error) {
+// 	// new ipfs shell
+// 	sh := ipfs.NewShell(node.Address + ":" + strconv.Itoa(node.IPFSAPIPort))
+// // create file pointer
+// r, _ := os.Open(file)
+// // create thumbnail and receive pointer
+// rt, _ := h.Thumbnail(r, 128)
+// 	// add the thumbnail to the ipfs
+// 	thumbCid, err := sh.Add(rt)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return Media{}, errors.New("could not upload thumbnail to ipfs node")
+// 	}
+// 	r.Close()
 
-	//recreate file pointer (add is manipulating it)
-	r, _ = os.Open(file)
-	// add the file to ipfs
-	// do not use the recursive AddDir because we need to add all the files to the mongo
-	cid, err := sh.Add(r)
-	if err != nil {
-		log.Println(err)
-		return Media{}, errors.New("could not upload file to ipfs node")
-	}
-	r.Close()
+// 	//recreate file pointer (add is manipulating it)
+// 	r, _ = os.Open(file)
+// 	// add the file to ipfs
+// 	// do not use the recursive AddDir because we need to add all the files to the mongo
+// 	cid, err := sh.Add(r)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return Media{}, errors.New("could not upload file to ipfs node")
+// 	}
+// 	r.Close()
 
-	// if successfull, create a media object with the returned ipfs url
-	// var m Media
-	// if (src.Meta != thumbnailer.Meta{} && src.Meta.Title != "") {
-	// 	m.Title = src.Meta.Title
-	// }
-	media.Sha1 = cid
-	media.URL = node.IPFSGateway + cid
-	media.URLThumb = node.IPFSGateway + thumbCid
-	// // eval mime to generic type
-	// if src.HasVideo {
-	// 	m.Type = "video"
-	// } else if src.HasAudio {
-	// 	m.Type = "audio"
-	// } else {
-	// 	m.Type = "image"
-	// }
-	// m.Format = src.Extension
-	// encode the object to json
-	// b := new(bytes.Buffer)
-	// json.NewEncoder(b).Encode(m)
-	// // post the object to the api
-	// post("http://"+PrimboardHost+"/api/v1/media", "application/json", b)
-	return media, nil
-}
+// 	// if successfull, create a media object with the returned ipfs url
+// 	// var m Media
+// 	// if (src.Meta != thumbnailer.Meta{} && src.Meta.Title != "") {
+// 	// 	m.Title = src.Meta.Title
+// 	// }
+// 	media.Sha1 = cid
+// 	media.URL = node.IPFSGateway + cid
+// 	media.URLThumb = node.IPFSGateway + thumbCid
+// 	// // eval mime to generic type
+// 	// if src.HasVideo {
+// 	// 	m.Type = "video"
+// 	// } else if src.HasAudio {
+// 	// 	m.Type = "audio"
+// 	// } else {
+// 	// 	m.Type = "image"
+// 	// }
+// 	// m.Format = src.Extension
+// 	// encode the object to json
+// 	// b := new(bytes.Buffer)
+// 	// json.NewEncoder(b).Encode(m)
+// 	// // post the object to the api
+// 	// post("http://"+PrimboardHost+"/api/v1/media", "application/json", b)
+// 	return media, nil
+// }
 
 // post creates a http client and posts the data with the auth cookie to the api
 func post(url string, contentType string, body io.Reader) {
@@ -129,14 +132,112 @@ func post(url string, contentType string, body io.Reader) {
 	}
 }
 
-func removeMediaFromIpfs(media Media, node Node) error {
-	// new ipfs shell
-	sh := ipfs.NewShell(node.Address + ":" + strconv.Itoa(node.IPFSAPIPort))
-	// unpin from node
-	sh.Unpin(media.Sha1)
-	// should implement repo gc
-	// not available on ipfs-api at moment
-	return nil
+func addMediaToNode(filePath string, m Media, node Node) (Media, error) {
+	// read File from filesystem
+	file, err := helper.ReadFile(filePath)
+	if err != nil {
+		return m, err
+	}
+	defer file.Close()
+
+	// generate hash
+	if m.Sha1, err = helper.GenerateSHA1(file); err != nil {
+		return m, err
+	}
+
+	// create thumbanil
+	rt := createThumbnail(filePath)
+	m.ThumbnailSha1 = fmt.Sprintf("%s_thumb", m.Sha1)
+
+	// create request body
+	body := new(bytes.Buffer)
+	writer := multipart.NewWriter(body)
+
+	// jump back to start of file (changed due to hash calculation)
+	file.Seek(0, io.SeekStart)
+
+	// write original file to request
+	original, err := writer.CreateFormFile("uploadfile", fmt.Sprintf("%s.%s", m.Sha1, m.Format))
+	if err != nil {
+		log.WithFields(log.Fields{
+			"type":  "original",
+			"path":  filePath,
+			"error": err.Error(),
+		}).Error("could not create writer for formfile")
+		return m, err
+	}
+	io.Copy(original, file)
+
+	// write thumbnail to request
+	thumb, err := writer.CreateFormFile("uploadthumb", fmt.Sprintf("%s_thumb.%s", m.Sha1, "jpg"))
+	if err != nil {
+		log.WithFields(log.Fields{
+			"type":  "thumbnail",
+			"path":  filePath,
+			"error": err.Error(),
+		}).Error("could not create writer for formfile")
+		return m, err
+	}
+	io.Copy(thumb, rt)
+
+	// write username
+	writer.WriteField("username", m.Creator)
+
+	// close writer
+	err = writer.Close()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not close writer")
+		return m, err
+	}
+
+	// create request
+	url := fmt.Sprintf("%s/api/v1/file", node.URL)
+	req, err := http.NewRequest("POST", url, body)
+	req.Header.Add("Content-Type", writer.FormDataContentType())
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not  create request")
+		return m, err
+	}
+
+	// create client and post request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not post request")
+		return m, err
+	}
+	if resp.StatusCode == 201 {
+		log.WithFields(log.Fields{
+			"file":  m.Sha1,
+			"thumb": m.ThumbnailSha1,
+			"node":  node.ID.Hex(),
+		}).Info("media created on node")
+	} else {
+		log.WithFields(log.Fields{
+			"file":  m.Sha1,
+			"thumb": m.ThumbnailSha1,
+			"node":  node.ID.Hex(),
+		}).Error("could not push media to node")
+		return m, errors.New("could not push media to node")
+	}
+
+	return m, nil
+
+}
+
+func createThumbnail(filename string) io.Reader {
+	// create file pointer
+	r, _ := os.Open(filename)
+	defer r.Close()
+	// create thumbnail and receive pointer
+	rt, _ := helper.Thumbnail(r, 128)
+	return rt
 }
 
 // readSessionCookie reads the auth cookie from the response

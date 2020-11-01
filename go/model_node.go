@@ -2,9 +2,8 @@ package primboard
 
 import (
 	"errors"
-	"net"
-	"strings"
 
+	"github.com/mirisbowring/PrImBoard/helper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,32 +12,23 @@ import (
 
 // Node holts the users and the information about the group
 type Node struct {
-	ID          primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
-	Title       string               `json:"title,omitempty" bson:"title,omitempty"`
-	Creator     string               `json:"creator,omitempty" bson:"creator,omitempty"`
-	Type        string               `json:"type,omitempty" bson:"type,omitempty"`
-	Groups      []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
-	Username    string               `json:"username" bson:"username"`
-	Password    string               `json:"password,omitempty" bson:"password,omitempty"`
-	Address     string               `json:"address,omitempty" bson:"address,omitempty"`
-	IPFSAPIPort int                  `json:"ipfsApiPort,omitempty" bson:"ipfsApiPort,omitempty"`
-	IPFSAPIURL  string               `json:"ipfsApiUrl,omitempty" bson:"ipfsApiUrl,omitempty"`
-	IPFSGateway string               `json:"ipfsGateway,omitempty" bson:"ipfsGateway,omitempty"`
+	ID      primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
+	Title   string               `json:"title,omitempty" bson:"title,omitempty"`
+	Creator string               `json:"creator,omitempty" bson:"creator,omitempty"`
+	Type    string               `json:"type,omitempty" bson:"type,omitempty"`
+	Secret  string               `json:"secret,omitempty" bson:"secret,omitempty"`
+	Groups  []primitive.ObjectID `json:"groups,omitempty" bson:"groups,omitempty"`
+	URL     string               `json:"url,omitempty" bson:"url,omitempty"`
 }
 
 // NodeProject is a bson representation of the ipfs-node setting object
 var NodeProject = bson.M{
-	"id":          1,
-	"title":       1,
-	"creator":     1,
-	"type":        1,
-	"groups":      1,
-	"username":    1,
-	"password":    1,
-	"address":     1,
-	"ipfsApiPort": 1,
-	"ipfsApiUrl":  1,
-	"ipfsGateway": 1,
+	"id":      1,
+	"title":   1,
+	"creator": 1,
+	"type":    1,
+	"groups":  1,
+	"url":     1,
 }
 
 // name of the mongo collection
@@ -145,33 +135,14 @@ func (e *Node) VerifyNode(db *mongo.Database) error {
 	if e.Title == "" {
 		return errors.New("node title must be set")
 	}
-	if _, found := Find([]string{"ipfs", "web"}, e.Type); !found {
+	if _, found := helper.FindInSlice([]string{"ipfs", "web"}, e.Type); !found {
 		return errors.New("specified type is not valid")
 	}
 	if e.Creator == "" {
 		return errors.New("creator must be specified")
 	}
-	if e.Username == "" {
-		return errors.New("username should not be empty")
-	}
-	if e.Password == "" {
-		return errors.New("password should not be empty")
-	}
-	if e.Address == "" || net.ParseIP(e.Address) == nil {
-		return errors.New("ip address is not valid")
-	}
-	if e.IPFSAPIPort == 0 {
-		return errors.New("ipfs api port should not be empty")
-	}
-	if e.IPFSAPIURL == "" {
-		return errors.New("ipfs api url should not be empty")
-	}
-	// if e.IPFSGateway == "" || net.ParseIP(e.IPFSGateway) == nil {
-	// 	return errors.New("ipfs gateway ip address is not valid")
-	// } else
-	if !strings.HasSuffix(e.IPFSGateway, "/") {
-		// append trailing slash
-		e.IPFSGateway = e.IPFSGateway + "/"
+	if e.URL == "" {
+		return errors.New("url is not valid")
 	}
 	if len(e.Groups) > 0 {
 		// select the specified groups
