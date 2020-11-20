@@ -1,13 +1,16 @@
 package helper
 
 import (
+	"crypto/rand"
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // PathExists checks if a given path is available on the filesystem
@@ -52,6 +55,28 @@ func GenerateSHA1(reader io.Reader) (string, error) {
 	hashInBytes := hash.Sum(nil)[:20]
 	_hash = hex.EncodeToString(hashInBytes)
 	return _hash, nil
+}
+
+// GenerateRandomToken generates a token of the specified length
+func GenerateRandomToken(length int) string {
+	b := make([]byte, length)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
+// ObjectIDIntersect checks whether slice a contains any element of slice b vice versa
+func ObjectIDIntersect(a []primitive.ObjectID, b []primitive.ObjectID) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	for _, id := range a {
+		for _, id2 := range b {
+			if id == id2 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ReadContent reads the content from a reader into a byte array
@@ -100,4 +125,17 @@ func ReadFileAndContent(path string) (*os.File, []byte, error) {
 		return nil, nil, err
 	}
 	return file, content, nil
+}
+
+// UniqueStrings removes all duplicates from a string slice and returns the result
+func UniqueStrings(slice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range slice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
 }

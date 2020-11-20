@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	th "github.com/bakape/thumbnailer"
+	th "github.com/bakape/thumbnailer/v2"
 	"github.com/oliamb/cutter"
 )
 

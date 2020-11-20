@@ -1,0 +1,23 @@
+FROM jrottenberg/ffmpeg:4.1-alpine AS build
+
+COPY --from=golang:1.15.5-alpine /usr/local/go/ /usr/local/go/
+ 
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+RUN apk update && apk add build-base pkgconfig
+
+WORKDIR /src
+
+COPY . .
+
+RUN go build -o /node-api cmd/primboard-api-node/main.go
+RUN chmod +x /node-api
+RUN mkdir /data
+
+FROM jrottenberg/ffmpeg:4.1-alpine AS node
+
+COPY --from=build /node-api .
+
+EXPOSE 8766
+ENTRYPOINT [ ]
+CMD [ "/node-api", "-env" ]

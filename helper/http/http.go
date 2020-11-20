@@ -2,12 +2,33 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
+
+// GetUsernameFromHeader returns the "user" header value
+func GetUsernameFromHeader(w http.ResponseWriter) string {
+	return w.Header().Get("user")
+}
+
+// ParseBody parses the passed readcloser to a string
+//
+// 0 -> ok || 1 -> could not parse body
+func ParseBody(body io.ReadCloser, logfields log.Fields) (string, int) {
+	bytes, err := ioutil.ReadAll(body)
+	if err != nil {
+		log.WithFields(logfields).Error("could not parse message body")
+		return "", 0
+	}
+	return string(bytes), 1
+}
 
 // ParsePrimitiveID parses the id from the route and returns it
 // returns primitive.NilObjectID if an error occured
@@ -26,7 +47,9 @@ func ParsePrimitiveID(w http.ResponseWriter, r *http.Request) primitive.ObjectID
 // stats 0 -> ok || status 1 -> error
 func ParsePathString(w http.ResponseWriter, r *http.Request, key string) (string, int) {
 	if val := mux.Vars(r)[key]; val == "" {
-		log.Warnf("key <%s> was not specified", key)
+		log.WithFields(log.Fields{
+			"key": key,
+		}).Warn("key was not specififed")
 		RespondWithError(w, http.StatusBadRequest, "key was not specified")
 		return val, 1
 	} else {
@@ -50,4 +73,41 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(response)
+}
+
+// SendRequest sends a request to an endpoint with specified content and type
+func SendRequest(client *http.Client, method string, endpoint string, bearer string, content *strings.Reader, contentType string) (*http.Response, int, string) {
+	logfields := log.Fields{
+		"method":   method,
+		"endpoint": endpoint,
+	}
+	req, err := http.NewRequest(method, endpoint, content)
+	if err != nil {
+		msg := "could not create request"
+		logfields["error"] = err.Error()
+		log.WithFields(logfields).Error(msg)
+		return nil, 1, msg
+	}
+	// set content type if specified
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	// set bearer token
+	if bearer != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearer))
+	}
+
+	res, err := client.Do(req)
+	// check if error occured during execution
+	if err != nil {
+		msg := "could not do request"
+		logfields["error"] = err.Error()
+		log.WithFields(logfields).Error(msg)
+		return nil, 1, msg
+	}
+
+	// request has been executed
+	logfields["status-code"] = res.StatusCode
+	log.WithFields(logfields).Info("request executed")
+	return res, 0, ""
 }

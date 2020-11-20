@@ -1,0 +1,1 @@
+/etc/nginx/locations IN_CREATE,IN_MODIFY,IN_DELETE nginx -s reload

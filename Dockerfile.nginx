@@ -1,0 +1,7 @@
+FROM nginx:1.19.4-alpine
+
+RUN apk add incron bash
+
+COPY ./utils/nginx-start.sh nginx-start.sh
+
+CMD bash nginx-start.sh

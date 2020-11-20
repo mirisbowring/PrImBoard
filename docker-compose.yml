@@ -1,0 +1,70 @@
+version: '3.8'
+services:
+    nginx:
+        depends_on:
+            - node
+        build:
+            dockerfile: Dockerfile.nginx
+            context: .
+        volumes:
+            - ./utils/nginx.conf:/etc/nginx/nginx.conf:rw
+            - ./nginx/error.log:/etc/nginx/error_log.log:rw
+            - ./nginx/cache/:/etc/nginx/cache:rw
+            - ./utils/10-incron-watch:/etc/incron.d/10-incron-watch:ro
+            - /home/osboxes/letsencrypt_tmp/:/etc/letsencrypt/:ro
+            - /home/osboxes/primboard-node/data:/data:ro
+            - /home/osboxes/primboard-node/etc/nginx/locations:/etc/nginx/locations:rw
+
+        ports:
+            - 80:80
+            - 443:443
+    gateway:
+        build:
+            dockerfile: Dockerfile.gateway
+            context: .
+        environment:
+            - PORT=8765
+            - MONGO_URL=mongodb://primboardapi:Start123@10.101.1.1:27017/primboard
+            - DATABASE_NAME=primboard
+            - CERTIFICATES=/certs
+            - CA_CERT=/certs/ca-cert.pem
+            - TLS_INSECURE=false
+            - COOKIE_PATH=/
+            - COOKIE_HTTP_ONLY=false
+            - COOKIE_SAME_SITE=2
+            - COOKIE_SECURE=true
+            - COOKIE_TOKEN_TITLE=stoken
+            - COOKIE_DOMAIN=10.101.1.2
+            - HTTP=true
+            - ALLOWED_ORIGINS=http=//localhost:4200;https://localhost:4200;http://172.17.0.1:4200;http://10.101.1.2:4200;https://10.101.1.2:4200;
+            - TAG_PREVIEW_LIMIT=5
+            - SESSION_ROTATION=false
+            - DEFAULT_MEDIA_PAGE_SIZE=30
+            - INVITE_VALIDITY=3
+        expose: 
+            - 8765
+        volumes:
+            - /home/osboxes/generate-trusted-ssl-certificate/api:/certs
+            - /home/osboxes/generate-trusted-ssl-certificate/minica/myCert:/certs/ca-cert.pem
+    node:
+        depends_on:
+            - gateway
+        build:
+            dockerfile: Dockerfile.node
+            context: .
+        environment:
+            - BASEPATH=/data
+            - TARGETPATH=/share
+            - CA_CERT=/certs/ca-cert.pem
+            - GATEWAY_URL=http://gateway:8765
+            - PORT=8766
+            - ALLOWED_ORIGINS=http://gateway:8765
+            - NODE_AUTH_ID=5f9eacd7e2c078a2988b9901
+            - NODE_AUTH_SECRET=sdfnsdfjhsduifhsdiufhsdiuofhjsdi
+        expose:
+            - 8766
+        volumes:
+            - /home/osboxes/primboard-node/data:/data:rw
+            - /home/osboxes/primboard-node/share:/share:rw
+            - /home/osboxes/generate-trusted-ssl-certificate/minica/myCert:/certs/ca-cert.pem
+            - /home/osboxes/primboard-node/etc/nginx/locations:/etc/nginx/locations:rw

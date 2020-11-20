@@ -1,0 +1,25 @@
+FROM jrottenberg/ffmpeg:4.1-alpine AS build
+
+COPY --from=golang:1.15.5-alpine /usr/local/go/ /usr/local/go/
+ 
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+RUN apk update && apk add build-base pkgconfig
+# pkgconfig ffmpeg
+
+ENV PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig
+
+WORKDIR /src
+
+COPY . .
+
+RUN go build -o /gateway-api cmd/primboard-api/main.go
+RUN chmod +x /gateway-api
+
+FROM jrottenberg/ffmpeg:4.1-alpine AS gateway-api
+
+COPY --from=build /gateway-api .
+
+EXPOSE 8765
+ENTRYPOINT [ ]
+CMD [ "/gateway-api", "-env" ]
