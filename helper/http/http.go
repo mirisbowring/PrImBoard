@@ -6,7 +6,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -76,7 +75,7 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 }
 
 // SendRequest sends a request to an endpoint with specified content and type
-func SendRequest(client *http.Client, method string, endpoint string, bearer string, content *strings.Reader, contentType string) (*http.Response, int, string) {
+func SendRequest(client *http.Client, method string, endpoint string, bearer string, content io.Reader, contentType string) (*http.Response, int, string) {
 	logfields := log.Fields{
 		"method":   method,
 		"endpoint": endpoint,

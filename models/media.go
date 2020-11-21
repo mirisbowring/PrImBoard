@@ -362,7 +362,7 @@ func GetAllMedia(db *mongo.Database) ([]Media, error) {
 }
 
 // GetMedia returns the specified entry from the mongodb
-func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
+func (m *Media) GetMedia(db *mongo.Database, permission bson.M, nodeMap map[primitive.ObjectID]string) error {
 	if permission == nil {
 		return errors.New("no permissions specified")
 	}
@@ -400,22 +400,26 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 	// }
 	opts := options.Aggregate()
 	conn := database.GetColCtx(MediaCollection, db, 30)
+	defer conn.Cancel()
+
 	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
 	if err != nil {
-		defer conn.Cancel()
 		return err
 	}
 	var found = false
 	for cursor.Next(conn.Ctx) {
 		err := cursor.Decode(&m)
 		if err != nil {
-			defer conn.Cancel()
 			return err
+		}
+		if m.Nodes != nil && len(m.Nodes) > 0 {
+			for i, node := range m.Nodes {
+				m.Nodes[i].UserSession = nodeMap[node.ID]
+			}
 		}
 		found = true
 		break
 	}
-	defer conn.Cancel()
 	if !found {
 		return errors.New("no results")
 	}

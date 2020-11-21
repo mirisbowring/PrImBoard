@@ -6,6 +6,7 @@ services:
         build:
             dockerfile: Dockerfile.nginx
             context: .
+            target: "${COMPOSE_TARGET}"
         volumes:
             - ./utils/nginx.conf:/etc/nginx/nginx.conf:rw
             - ./nginx/error.log:/etc/nginx/error_log.log:rw
@@ -22,6 +23,7 @@ services:
         build:
             dockerfile: Dockerfile.gateway
             context: .
+            target: "${COMPOSE_TARGET}"
         environment:
             - PORT=8765
             - MONGO_URL=mongodb://primboardapi:Start123@10.101.1.1:27017/primboard
@@ -52,6 +54,7 @@ services:
         build:
             dockerfile: Dockerfile.node
             context: .
+            target: "${COMPOSE_TARGET}"
         environment:
             - BASEPATH=/data
             - TARGETPATH=/share

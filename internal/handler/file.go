@@ -20,10 +20,10 @@ func CreateFile(basePath string, file multipart.File, header *multipart.FileHead
 	// eval upload type
 	switch _type {
 	case "original":
-		path = filepath.Join(basePath, username, "own")
+		path = filepath.Join(basePath, "user", username, "own")
 		break
 	case "thumb":
-		path = filepath.Join(basePath, username, "own", "thumb")
+		path = filepath.Join(basePath, "user", username, "own", "thumb")
 		break
 	default:
 		log.WithFields(log.Fields{
@@ -124,7 +124,7 @@ func LinkUser(basePath string, targetPath string, username string, token string)
 		return 1
 	}
 	writer := bufio.NewWriter(file)
-	_, err = writer.WriteString(fmt.Sprintf("location /node-data/%s {\nalias /data/%s;\n}", token, username))
+	_, err = writer.WriteString(fmt.Sprintf("location /node-data/%s {\nalias /data/user/%s;\n}", token, username))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"username": username,

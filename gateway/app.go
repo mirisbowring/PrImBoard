@@ -264,3 +264,15 @@ func ParseIDs(ids []string) ([]primitive.ObjectID, error) {
 	}
 	return IDs, nil
 }
+
+// getNodeTokenMap parses the nodetoken map for the currentuser
+//
+// creates http error response if fails
+func (g *AppGateway) getNodeTokenMap(w http.ResponseWriter) (map[primitive.ObjectID]string, int) {
+	nodeMap := g.GetSessionByUsername(_http.GetUsernameFromHeader(w)).NodeTokenMap
+	if nodeMap == nil || len(nodeMap) == 0 {
+		_http.RespondWithError(w, http.StatusNotFound, "no node available")
+		return nil, 1
+	}
+	return nodeMap, 0
+}

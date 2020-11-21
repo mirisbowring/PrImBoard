@@ -16,3 +16,6 @@ env.json
 env-node.json
 
 tmp/*/**
+
+nginx/
+rebuild

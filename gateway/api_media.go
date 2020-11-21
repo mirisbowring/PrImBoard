@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	_http "github.com/mirisbowring/primboard/helper/http"
 	"github.com/mirisbowring/primboard/models"
+	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -393,8 +394,15 @@ func (g *AppGateway) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	}
 	// create model by passed id
 	m := models.Media{ID: id}
+
+	// parseNodeTokenMap
+	nodeMap, status := g.getNodeTokenMap(w)
+	if status > 0 {
+		return
+	}
+
 	// try to select media
-	if err := m.GetMedia(g.DB, g.GetUserPermission(w)); err != nil {
+	if err := m.GetMedia(g.DB, g.GetUserPermission(w), nodeMap); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -437,8 +445,15 @@ func (g *AppGateway) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
 	id, _ := primitive.ObjectIDFromHex(parts[1])
 	//create model by passed hash
 	m := models.Media{ID: id}
+
+	// parseNodeTokenMap
+	nodeMap, status := g.getNodeTokenMap(w)
+	if status > 0 {
+		return
+	}
+
 	// try to select media
-	if err := m.GetMedia(g.DB, g.GetUserPermission(w)); err != nil {
+	if err := m.GetMedia(g.DB, g.GetUserPermission(w), nodeMap); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -635,6 +650,8 @@ func (g *AppGateway) UpdateMediaByID(w http.ResponseWriter, r *http.Request) {
 
 // UploadMedia handles the webrequest for uploading a file to the api
 func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
+	username := _http.GetUsernameFromHeader(w)
+
 	// grep node
 	node := r.FormValue("node")
 	n := models.Node{}
@@ -676,7 +693,7 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	// setting creation timestamp
 	m.TimestampUpload = int64(time.Now().Unix())
 	// set the username
-	m.Creator = w.Header().Get("user")
+	m.Creator = username
 
 	// create user's tmp dir
 	_ = os.Mkdir("tmp/"+m.Creator, 0755)
@@ -695,8 +712,18 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token := g.GetNode(n.ID).Secret
+	if token == "" {
+		log.WithFields(log.Fields{
+			"node": n.ID,
+		}).Error("user not authenticated to node - is node running?")
+		_http.RespondWithError(w, http.StatusNotFound, "specified node not available")
+		return
+	}
+	n.Secret = token
+
 	// file to specified node
-	m, err = addMediaToNode(filename, m, n)
+	m, err = addMediaToNode(filename, m, n, g.HTTPClient)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not push media to node")
 		return

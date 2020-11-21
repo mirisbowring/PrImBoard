@@ -1,4 +1,7 @@
-FROM jrottenberg/ffmpeg:4.1-alpine AS build
+# syntax = docker/dockerfile:1-experimental
+
+FROM jrottenberg/ffmpeg:4.1-alpine AS base
+ENTRYPOINT [ ]
 
 COPY --from=golang:1.15.5-alpine /usr/local/go/ /usr/local/go/
  
@@ -11,12 +14,24 @@ ENV PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig
 
 WORKDIR /src
 
-COPY . .
+COPY go.* .
 
-RUN go build -o /gateway-api cmd/primboard-api/main.go
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+FROM base AS build
+
+ARG TARGETOS
+ARG TARGETARCH
+RUN --mount=target=. \
+    --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /gateway-api cmd/primboard-api/main.go
+
+# RUN go build -o /gateway-api cmd/primboard-api/main.go
 RUN chmod +x /gateway-api
 
-FROM jrottenberg/ffmpeg:4.1-alpine AS gateway-api
+FROM jrottenberg/ffmpeg:4.1-alpine AS run
 
 COPY --from=build /gateway-api .
 

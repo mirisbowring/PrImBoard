@@ -1,20 +1,36 @@
-FROM jrottenberg/ffmpeg:4.1-alpine AS build
+# syntax = docker/dockerfile:1-experimental
+
+FROM jrottenberg/ffmpeg:4.1-alpine AS base
+ENTRYPOINT [ ]
 
 COPY --from=golang:1.15.5-alpine /usr/local/go/ /usr/local/go/
  
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 RUN apk update && apk add build-base pkgconfig
+# pkgconfig ffmpeg
+
+ENV PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig
 
 WORKDIR /src
 
-COPY . .
+COPY go.* .
 
-RUN go build -o /node-api cmd/primboard-api-node/main.go
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+FROM base AS build
+
+ARG TARGETOS
+ARG TARGETARCH
+RUN --mount=target=. \
+    --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /node-api cmd/primboard-api-node/main.go
+
 RUN chmod +x /node-api
-RUN mkdir /data
 
-FROM jrottenberg/ffmpeg:4.1-alpine AS node
+FROM jrottenberg/ffmpeg:4.1-alpine AS run
 
 COPY --from=build /node-api .
 

@@ -133,7 +133,7 @@ func post(url string, contentType string, body io.Reader) {
 	}
 }
 
-func addMediaToNode(filePath string, m models.Media, node models.Node) (models.Media, error) {
+func addMediaToNode(filePath string, m models.Media, node models.Node, client *http.Client) (models.Media, error) {
 	// read File from filesystem
 	file, err := helper.ReadFile(filePath)
 	if err != nil {
@@ -193,43 +193,34 @@ func addMediaToNode(filePath string, m models.Media, node models.Node) (models.M
 		return m, err
 	}
 
-	// create request
-	url := fmt.Sprintf("%s/api/v1/file", node.DataEndpoint)
-	req, err := http.NewRequest("POST", url, body)
-	req.Header.Add("Content-Type", writer.FormDataContentType())
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("could not  create request")
-		return m, err
+	endpoint := fmt.Sprintf("%s/api/v1/file", node.APIEndpoint)
+	contentType := writer.FormDataContentType()
+
+	// executing request
+	res, status, msg := _http.SendRequest(client, "POST", endpoint, node.Secret, body, contentType)
+	if status > 0 {
+		return m, errors.New(msg)
 	}
 
-	// create client and post request
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"error": err.Error(),
-		}).Error("could not post request")
-		return m, err
+	// preparing log fields
+	logfields := log.Fields{
+		"file":        m.Sha1,
+		"thumb":       m.ThumbnailSha1,
+		"node":        node.ID.Hex(),
+		"status-code": res.StatusCode,
 	}
-	if resp.StatusCode == 201 {
-		log.WithFields(log.Fields{
-			"file":  m.Sha1,
-			"thumb": m.ThumbnailSha1,
-			"node":  node.ID.Hex(),
-		}).Info("media created on node")
+
+	// handling response
+	if res.StatusCode == 201 {
+		log.WithFields(logfields).Info("media created on node")
 
 		// add node to media
 		m.NodeIDs = append(m.NodeIDs, node.ID)
 		return m, nil
 	} else {
-		log.WithFields(log.Fields{
-			"file":  m.Sha1,
-			"thumb": m.ThumbnailSha1,
-			"node":  node.ID.Hex(),
-		}).Error("could not push media to node")
-		return m, errors.New("could not push media to node")
+		msg := "could not push media to node"
+		log.WithFields(logfields).Error(msg)
+		return m, errors.New(msg)
 	}
 }
 
