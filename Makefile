@@ -20,3 +20,6 @@ up:
 
 down:
 	@COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 COMPOSE_TARGET=run docker-compose -f docker-compose.yml down $(c)
+
+exec:
+	@COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 COMPOSE_TARGET=run docker-compose -f docker-compose.yml exec $(c) sh

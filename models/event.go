@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"log"
 	"time"
 
 	"github.com/mirisbowring/primboard/helper/database"
@@ -10,6 +9,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // Event holds comments, media and the information about the the event
@@ -120,24 +121,26 @@ func (e *Event) GetEvent(db *mongo.Database, permission bson.M) error {
 	}
 	opts := options.Aggregate()
 	conn := database.GetColCtx(eventColName, db, 30)
+	defer conn.Cancel()
 	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
 	if err != nil {
-		defer conn.Cancel()
+
 		return err
 	}
+	defer cursor.Close(conn.Ctx)
+
 	var found = false
 	for cursor.Next(conn.Ctx) {
 		err := cursor.Decode(&e)
 		if err != nil {
-			defer conn.Cancel()
 			return err
 		}
 		found = true
 		break
 	}
-	defer conn.Cancel()
+
 	if !found {
-		return errors.New("no results")
+		return mongo.ErrNoDocuments
 	}
 	return nil
 }
@@ -147,6 +150,7 @@ func (e *Event) GetEventCreate(db *mongo.Database, permission bson.M, creator st
 	// read event if ID was specified
 	if e.ID.Hex() != "" {
 		if err := e.GetEvent(db, permission); err != nil {
+			log.Error(err)
 			switch err {
 			case mongo.ErrNoDocuments:
 				// event does not exist and should be created
@@ -187,16 +191,16 @@ func GetEventsByIDs(db *mongo.Database, ids []primitive.ObjectID, permission bso
 		permission}}
 
 	conn := database.GetColCtx(eventColName, db, 30)
+	defer conn.Cancel()
 	var events []Event
 	cursor, err := conn.Col.Find(conn.Ctx, filter)
 	if err != nil {
 		log.Println(err)
-		defer conn.Cancel()
 		return events, err
 	}
+	defer cursor.Close(conn.Ctx)
 
 	cursor.All(conn.Ctx, &events)
-	defer conn.Cancel()
 	return events, nil
 }
 

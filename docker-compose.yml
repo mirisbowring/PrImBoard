@@ -8,13 +8,13 @@ services:
             context: .
             target: "${COMPOSE_TARGET}"
         volumes:
-            - ./utils/nginx.conf:/etc/nginx/nginx.conf:rw
-            - ./nginx/error.log:/etc/nginx/error_log.log:rw
-            - ./nginx/cache/:/etc/nginx/cache:rw
-            - ./utils/10-incron-watch:/etc/incron.d/10-incron-watch:ro
+            - ${PWD}/utils/nginx.conf:/etc/nginx/nginx.conf:rw
+            - ${PWD}/utils/10-incron-watch:/etc/incron.d/10-incron-watch:ro
             - /home/osboxes/letsencrypt_tmp/:/etc/letsencrypt/:ro
             - /home/osboxes/primboard-node/data:/data:ro
             - /home/osboxes/primboard-node/etc/nginx/locations:/etc/nginx/locations:rw
+            - /home/osboxes/primboard-node/etc/nginx/cache/:/etc/nginx/cache:rw
+            - /home/osboxes/primboard-node/etc/nginx/logs:/etc/nginx/logs:rw
 
         ports:
             - 80:80
