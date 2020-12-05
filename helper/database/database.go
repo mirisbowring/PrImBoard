@@ -49,7 +49,10 @@ func CreatePermissionFilter(groups []primitive.ObjectID, user string) bson.M {
 		filters = append(filters, bson.M{"groupIDs": bson.M{"$in": groups}})
 	}
 
+	// if len(filters) > 1 {
 	return bson.M{"$or": filters}
+	// }
+	// return filters[0]
 }
 
 // CreateMatcherProjectPipeline creates a pipeline with a match and project

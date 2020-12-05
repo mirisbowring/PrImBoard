@@ -165,7 +165,7 @@ func (e *Event) GetEventCreate(db *mongo.Database, permission bson.M, creator st
 	// create event instead
 	e.Creator = creator
 	e.TimestampCreation = int64(time.Now().Unix())
-	if err := e.VerifyEvent(db); err != nil {
+	if err := e.VerifyEvent(db, permission); err != nil {
 		return err
 	}
 	// insert into db
@@ -242,7 +242,7 @@ func (e *Event) UpdateEvent(db *mongo.Database, ue Event, permission bson.M) (*m
 
 // VerifyEvent verifies all mandatory fields of the specified event
 // does not verify ID
-func (e *Event) VerifyEvent(db *mongo.Database) error {
+func (e *Event) VerifyEvent(db *mongo.Database, permission bson.M) error {
 	if e.Title == "" {
 		return errors.New("event title must be set")
 	}
@@ -253,7 +253,7 @@ func (e *Event) VerifyEvent(db *mongo.Database) error {
 		return errors.New("creation timestamp was not set")
 	}
 	if len(e.Groups) > 0 {
-		groups, err := GetUserGroupsByIDs(db, e.Groups)
+		groups, err := GetUserGroupsByIDs(db, e.Groups, permission)
 		if err != nil {
 			return err
 		}

@@ -15,18 +15,21 @@ import (
 
 // PathExists checks if a given path is available on the filesystem
 func PathExists(path string) bool {
-	if _, err := os.Stat("./conf/app.ini"); err != nil {
+	logfields := log.Fields{"path": path}
+	defaultMsg := "checked path existance"
+	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			log.Debugf("checked path: %s - does not exist", path)
+			logfields["exist"] = false
+			log.WithFields(logfields).Debug(defaultMsg)
 			return false
 		} else {
-			log.WithFields(log.Fields{
-				"error": err.Error(),
-			}).Errorf("error occured while checking if <%s> exist", path)
+			logfields["error"] = err.Error()
+			log.WithFields(logfields).Error("error occured during path existance check")
 			return false
 		}
 	}
-	log.Debugf("checked path: %s - does exist", path)
+	logfields["exist"] = true
+	log.WithFields(logfields).Debug(defaultMsg)
 	return true
 }
 

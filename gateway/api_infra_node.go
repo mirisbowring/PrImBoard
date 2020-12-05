@@ -3,8 +3,10 @@ package gateway
 import (
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	_http "github.com/mirisbowring/primboard/helper/http"
+	"github.com/mirisbowring/primboard/internal/handler/infrastructure"
 	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
@@ -29,7 +31,7 @@ func (g *AppGateway) AuthenticateNode(w http.ResponseWriter, r *http.Request) {
 	psk := string(body)
 
 	// select node from database
-	if err := node.GetNode(g.DB, bson.M{"secret": psk}); err != nil {
+	if err := node.GetNode(g.DB, bson.M{"secret": psk}, true); err != nil {
 		log.WithFields(log.Fields{
 			"node":          node.ID,
 			"authenticated": false,
@@ -62,6 +64,37 @@ func (g *AppGateway) AuthenticateNode(w http.ResponseWriter, r *http.Request) {
 		"authenticated": true,
 	}).Info("node authenticated to api")
 
+	go g.syncUserAuthentication(node)
+
 	// respond with ok
 	_http.RespondWithJSON(w, http.StatusOK, "")
+}
+
+func (g *AppGateway) syncUserAuthentication(node models.Node) {
+	// wait for api endpoint to finish
+	time.Sleep(3 * time.Second)
+
+	//
+	users, status := node.GetUser(g.DB)
+	if status > 0 {
+		log.Error("could not select authorized users for node")
+		return
+	}
+
+	for _, user := range users {
+		session := g.GetSessionByUser(user)
+		// check if session does exist
+		if session.Token != "" {
+			continue
+		}
+		status, msg := infrastructure.NodeAuthentication(session, []models.Node{node}, true, g.HTTPClient)
+		if status > 0 {
+			log.WithFields(log.Fields{
+				"username": session.User.Username,
+				"node":     node.ID,
+				"error":    msg,
+			}).Error("could not authenticate user")
+			continue
+		}
+	}
 }

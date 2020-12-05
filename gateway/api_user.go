@@ -182,8 +182,15 @@ func (g *AppGateway) LoginUser(w http.ResponseWriter, r *http.Request) {
 	// Create new Session
 	session := g.NewSession(u, g.DB)
 
+	// select nodes, the user has access to
+	nodes, err := models.GetAllNodes(g.DB, g.GetUserPermission(w, false), "auth")
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not retrieve nodes")
+		return
+	}
+
 	// authenticate user to nodes
-	if status, msg := infrastructure.NodeAuthentication(session, g.Nodes, true, g.HTTPClient); status > 0 {
+	if status, msg := infrastructure.NodeAuthentication(session, nodes, true, g.HTTPClient); status > 0 {
 		_http.RespondWithError(w, http.StatusInternalServerError, msg)
 		return
 	}

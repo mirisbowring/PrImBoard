@@ -77,7 +77,7 @@ func (g *AppGateway) GetEventByID(w http.ResponseWriter, r *http.Request) {
 	// create model by passed id
 	e := models.Event{ID: id}
 	// try to select user
-	if err := e.GetEvent(g.DB, g.GetUserPermission(w)); err != nil {
+	if err := e.GetEvent(g.DB, g.GetUserPermission(w, false)); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -97,7 +97,7 @@ func (g *AppGateway) GetEventsByName(w http.ResponseWriter, r *http.Request) {
 	// parse request
 	vars := mux.Vars(r)
 	keyword := vars["title"]
-	events, err := models.GetEventsByKeyword(g.DB, g.GetUserPermission(w), keyword, g.Config.TagPreviewLimit)
+	events, err := models.GetEventsByKeyword(g.DB, g.GetUserPermission(w, false), keyword, g.Config.TagPreviewLimit)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -122,7 +122,7 @@ func (g *AppGateway) MapTagsToEvents(w http.ResponseWriter, r *http.Request) {
 	username := w.Header().Get("user")
 	// iterating over all events and add them if not exist
 	for _, e := range tem.Events {
-		if err := e.GetEventCreate(g.DB, g.GetUserPermission(w), username); err != nil {
+		if err := e.GetEventCreate(g.DB, g.GetUserPermission(w, false), username); err != nil {
 			_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -130,13 +130,13 @@ func (g *AppGateway) MapTagsToEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// execute bulk update
-	_, err := models.BulkAddTagEvent(g.DB, tem.Tags, IDs, g.GetUserPermission(w))
+	_, err := models.BulkAddTagEvent(g.DB, tem.Tags, IDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
-	media, err := models.GetEventsByIDs(g.DB, IDs, g.GetUserPermission(w))
+	media, err := models.GetEventsByIDs(g.DB, IDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -166,14 +166,14 @@ func (g *AppGateway) UpdateEventByID(w http.ResponseWriter, r *http.Request) {
 	}
 	// trying to update model with requested body
 	e := models.Event{ID: id}
-	_, err := e.UpdateEvent(g.DB, ue, g.GetUserPermission(w))
+	_, err := e.UpdateEvent(g.DB, ue, g.GetUserPermission(w, true))
 	if err != nil {
 		// Error occured during update
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	// trying to select updated event
-	if err = e.GetEvent(g.DB, g.GetUserPermission(w)); err != nil {
+	if err = e.GetEvent(g.DB, g.GetUserPermission(w, false)); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

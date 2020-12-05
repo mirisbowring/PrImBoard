@@ -12,6 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// ErrorJSON is an return object to pass data as error response
+type ErrorJSON struct {
+	Error   string      `json:"error"`
+	Payload interface{} `json:"payload"`
+}
+
 // GetUsernameFromHeader returns the "user" header value
 func GetUsernameFromHeader(w http.ResponseWriter) string {
 	return w.Header().Get("user")
@@ -56,6 +62,20 @@ func ParsePathString(w http.ResponseWriter, r *http.Request, key string) (string
 	}
 }
 
+// ParseQueryString parses the string value from the route and returns it
+// stats 0 -> ok || status 1 -> error
+func ParseQueryString(w http.ResponseWriter, r *http.Request, key string) (string, int) {
+	if val := r.URL.Query().Get(key); val == "" {
+		log.WithFields(log.Fields{
+			"key": key,
+		}).Warn("key was not specififed in query")
+		RespondWithError(w, http.StatusBadRequest, "key was not specified in query")
+		return val, 1
+	} else {
+		return val, 0
+	}
+}
+
 // RespondWithError Creates an error payload and adds the error message to be
 // returned
 func RespondWithError(w http.ResponseWriter, code int, message string) {
@@ -91,6 +111,7 @@ func SendRequest(client *http.Client, method string, endpoint string, bearer str
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
+
 	// set bearer token
 	if bearer != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearer))

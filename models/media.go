@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -18,7 +19,8 @@ import (
 type Media struct {
 	ID              primitive.ObjectID   `json:"id,omitempty" bson:"_id,omitempty"`
 	Sha1            string               `json:"sha1,omitempty" bson:"sha1,omitempty"`
-	ThumbnailSha1   string               `json:"thumbnailSha1,omitempty" bson:"thumbnailSha1,omitempty"`
+	FileName        string               `json:"filename,omitempty" bson:"filename,omitempty"`
+	FileNameThumb   string               `json:"filenameThumb,omitempty" bson:"filenameThumb,omitempty"`
 	Title           string               `json:"title,omitempty" bson:"title,omitempty"`
 	Description     string               `json:"description,omitempty" bson:"description,omitempty"`
 	Comments        []*Comment           `json:"comments,omitempty" bson:"comments,omitempty"`
@@ -30,7 +32,7 @@ type Media struct {
 	URL             string               `json:"url,omitempty" bson:"url,omitempty"`
 	URLThumb        string               `json:"urlThumb,omitempty" bson:"urlThumb,omitempty"`
 	Type            string               `json:"type,omitempty" bson:"type,omitempty"`
-	Format          string               `json:"format,omitempty" bson:"format,omitempty"`
+	Extension       string               `json:"extension,omitempty" bson:"extension,omitempty"`
 	ContentType     string               `json:"contentType,omitempty" bson:"contentType,omitempty"`
 	Tags            []string             `json:"tags,omitempty" bson:"tags,omitempty"`
 	NodeIDs         []primitive.ObjectID `json:"nodeIDs,omitempty" bson:"nodeIDs,omitempty"`
@@ -55,7 +57,8 @@ type MediaGroupMap struct {
 var MediaProject = bson.M{
 	"_id":             1,
 	"sha1":            1,
-	"thumbnailSha1":   1,
+	"filename":        1,
+	"filenameThumb":   1,
 	"title":           1,
 	"description":     1,
 	"comments":        1,
@@ -66,7 +69,7 @@ var MediaProject = bson.M{
 	"url":             1,
 	"urlThumb":        1,
 	"type":            1,
-	"format":          1,
+	"extension":       1,
 	"contentType":     1,
 	"tags":            1,
 	"users":           UserProject,
@@ -78,15 +81,17 @@ var MediaProject = bson.M{
 var MediaListProject = bson.M{
 	"_id":           1,
 	"sha1":          1,
-	"thumbnailSha1": 1,
+	"filename":      1,
+	"filenameThumb": 1,
 	"title":         1,
 	"creator":       1,
 	"url":           1,
 	"urlThumb":      1,
 	"type":          1,
-	"format":        1,
+	"extension":     1,
 	"contentType":   1,
 	"nodes":         NodeProject,
+	"groups":        UserGroupProject,
 }
 
 // MediaCollection is the name of the mongo collection
@@ -172,6 +177,10 @@ func (m *Media) AddUserGroups(db *mongo.Database, ugIDs []primitive.ObjectID) er
 
 // BulkAddTagMedia bulk operates an add Tags to  many media ids
 func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	if permission == nil {
+		return nil, errors.New("no permissions specified")
+	}
+
 	conn := database.GetColCtx(MediaCollection, db, 30)
 	opts := options.BulkWrite().SetOrdered(false)
 	// create update list
@@ -195,6 +204,10 @@ func BulkAddTagMedia(db *mongo.Database, tags []string, ids []primitive.ObjectID
 
 // BulkAddMediaEvent bulk operates an add events to many media ids
 func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	if permission == nil {
+		return nil, errors.New("no permissions specified")
+	}
+
 	conn := database.GetColCtx(MediaCollection, db, 30)
 	opts := options.BulkWrite().SetOrdered(false)
 	// create update list
@@ -218,6 +231,10 @@ func BulkAddMediaEvent(db *mongo.Database, mediaIDs []primitive.ObjectID, eventI
 
 // BulkAddMediaGroup bulk operates an adds groups to many media ids
 func BulkAddMediaGroup(db *mongo.Database, mediaIDs []primitive.ObjectID, groupIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	if permission == nil {
+		return nil, errors.New("no permissions specified")
+	}
+
 	conn := database.GetColCtx(MediaCollection, db, 30)
 	opts := options.BulkWrite().SetOrdered(false)
 	// create update list
@@ -227,6 +244,65 @@ func BulkAddMediaGroup(db *mongo.Database, mediaIDs []primitive.ObjectID, groupI
 			{"_id": id},
 			permission}}
 		update := bson.M{"$addToSet": bson.M{"groupIDs": bson.M{"$each": groupIDs}}}
+		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
+	}
+	// execute bulk update
+	res, err := conn.Col.BulkWrite(conn.Ctx, models, opts)
+	defer conn.Cancel()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	return res, nil
+}
+
+// BulkDeleteMedia deletes multiple media by ids
+//
+// 0 -> ok
+// 1 -> no permission was specified
+// 2 -> no IDs specified to delete
+// 3 -> could not execute BulkDeleteMedia
+func BulkDeleteMedia(db *mongo.Database, mediaIDs []primitive.ObjectID, permission bson.M) (int, string) {
+	if permission == nil {
+		return 1, "no permission was specified"
+	}
+
+	if mediaIDs == nil || len(mediaIDs) == 0 {
+		return 2, "no IDs specified to delete"
+	}
+
+	filters := []bson.M{}
+	filters = append(filters, bson.M{"_id": bson.M{"$in": mediaIDs}})
+	filters = append(filters, permission)
+
+	conn := database.GetColCtx(MediaCollection, db, 30)
+	defer conn.Cancel()
+
+	res, err := conn.Col.DeleteMany(conn.Ctx, bson.M{"$and": filters})
+	if err != nil {
+		log.Error("could not execute BulkDeleteMedia")
+		return 3, "could not execute BulkDeleteMedia"
+	}
+
+	log.WithFields(log.Fields{"count": res.DeletedCount}).Debug("bulk deleted media")
+	return 0, fmt.Sprintf("deleted %d documents", res.DeletedCount)
+}
+
+// BulkRemoveMediaGroup bulk operates an pulls groups from many media ids
+func BulkRemoveMediaGroup(db *mongo.Database, mediaIDs []primitive.ObjectID, groupIDs []primitive.ObjectID, permission bson.M) (*mongo.BulkWriteResult, error) {
+	if permission == nil {
+		return nil, errors.New("no permissions specified")
+	}
+
+	conn := database.GetColCtx(MediaCollection, db, 30)
+	opts := options.BulkWrite().SetOrdered(false)
+	// create update list
+	models := []mongo.WriteModel{}
+	for _, id := range mediaIDs {
+		filter := bson.M{"$and": []bson.M{
+			{"_id": id},
+			permission}}
+		update := bson.M{"$pullAll": bson.M{"groupIDs": groupIDs}}
 		models = append(models, mongo.NewUpdateOneModel().SetFilter(filter).SetUpdate(update))
 	}
 	// execute bulk update
@@ -297,8 +373,14 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M, nodeM
 	// also select nodes
 	pipeline := []bson.M{
 		{"$sort": bson.M{"_id": query.ASC}},
-		{"$limit": int64(query.Size)},
 		{"$match": tmp},
+		{"$limit": query.Size},
+		{"$lookup": bson.M{
+			"from":         "usergroup",
+			"localField":   "groupIDs",
+			"foreignField": "_id",
+			"as":           "groups",
+		}},
 		{"$lookup": bson.M{
 			"from":         "node",
 			"localField":   "nodeIDs",
@@ -436,17 +518,30 @@ func GetMediaByIDs(db *mongo.Database, ids []primitive.ObjectID, permission bson
 		{"_id": bson.M{"$in": ids}},
 		permission}}
 
-	conn := database.GetColCtx(MediaCollection, db, 30)
-	var media []Media
-	cursor, err := conn.Col.Find(conn.Ctx, filter)
-	if err != nil {
-		log.Println(err)
-		defer conn.Cancel()
-		return media, err
+	pipeline := []bson.M{
+		{"$match": filter},
+		{"$lookup": bson.M{
+			"from":         "node",
+			"localField":   "nodeIDs",
+			"foreignField": "_id",
+			"as":           "nodes",
+		}},
+		{"$project": MediaProject},
 	}
 
-	cursor.All(conn.Ctx, &media)
+	opts := options.Aggregate()
+	conn := database.GetColCtx(MediaCollection, db, 30)
 	defer conn.Cancel()
+
+	var media []Media
+	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
+	if err != nil {
+		log.Error(err.Error())
+		return media, err
+	}
+	defer cursor.Close(conn.Ctx)
+
+	cursor.All(conn.Ctx, &media)
 	return media, nil
 }
 

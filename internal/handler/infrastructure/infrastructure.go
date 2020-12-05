@@ -48,7 +48,7 @@ func NodeAuthentication(session *iModels.Session, nodes []models.Node, authentic
 		}
 
 		// verify that user should have access to node
-		if username != node.Creator && !helper.ObjectIDIntersect(session.Usergroups, node.Usergroups) {
+		if username != node.Creator && !helper.ObjectIDIntersect(session.Usergroups, node.GroupIDs) || node.Secret == "" {
 			continue
 		}
 
@@ -70,12 +70,18 @@ func NodeAuthentication(session *iModels.Session, nodes []models.Node, authentic
 		// read body (for logging mainly)
 		logfields["message"], _ = _http.ParseBody(res.Body, logfields)
 
-		// check if something went wrong
-		if res.StatusCode != 200 {
+		switch res.StatusCode {
+		case http.StatusOK:
+			break
+		case http.StatusNotFound:
+			msg = "node not found"
+			log.WithFields(logfields).Error("could not fond node")
+			continue
+		default:
 			msg = "unexpected response"
 			log.WithFields(logfields).Error(msg)
 
-			return 1, msg
+			continue
 		}
 
 		// un/authentication succeded

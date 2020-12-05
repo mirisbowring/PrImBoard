@@ -15,8 +15,12 @@ func (n *AppNode) initializeRoutes() {
 	// index
 	n.Router.HandleFunc("/api/v1/", n.index).Methods("GET")
 	// files
-	n.Router.Handle("/api/v1/file", n.authenticate(http.HandlerFunc(n.AddFile), false)).Methods("POST")
-	n.Router.Handle("/api/v1/file/{filename}", n.authenticate(http.HandlerFunc(n.DeleteFile), false)).Methods("DELETE")
+	// rela
+	n.Router.Handle("/api/v1/file/{username}", n.authenticate(http.HandlerFunc(n.addFile), false)).Methods("POST")
+	n.Router.Handle("/api/v1/file/{username}/{filename}", n.authenticate(http.HandlerFunc(n.deleteFile), false)).Methods("DELETE")
+	n.Router.Handle("/api/v1/files/{username}/remove", n.authenticate(http.HandlerFunc(n.deleteFiles), false)).Methods("POST")
+	n.Router.Handle("/api/v1/files/{username}/share", n.authenticate(http.HandlerFunc(n.shareFiles), false)).Methods("POST")
+	n.Router.Handle("/api/v1/files/{username}/share", n.authenticate(http.HandlerFunc(n.deleteShares), false)).Methods("DELETE")
 
 	n.Router.Handle("/api/v1/user/{username}/authenticate", n.authenticate(http.HandlerFunc(n.authenticateUser), false)).Methods("POST")
 	n.Router.Handle("/api/v1/user/{username}/unauthenticate", n.authenticate(http.HandlerFunc(n.unauthenticateUser), false)).Methods("POST")

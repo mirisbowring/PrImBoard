@@ -101,18 +101,25 @@ func GetUserGroups(db *mongo.Database, user string) ([]UserGroup, error) {
 }
 
 // GetUserGroupsByIDs returns a slice of usergroups, that are matching the given id slice
-func GetUserGroupsByIDs(db *mongo.Database, ids []primitive.ObjectID) ([]UserGroup, error) {
+func GetUserGroupsByIDs(db *mongo.Database, ids []primitive.ObjectID, permission bson.M) ([]UserGroup, error) {
+	if permission == nil {
+		return nil, errors.New("no permission specified")
+	}
+	filter := bson.M{"$and": []bson.M{
+		{"_id": bson.M{"$in": ids}},
+		permission}}
+
 	conn := database.GetColCtx(UserGroupCollection, db, 30)
-	filter := bson.M{"_id": bson.M{"$in": ids}}
+	defer conn.Cancel()
 
 	var groups []UserGroup
 	cursor, err := conn.Col.Find(conn.Ctx, filter)
 	if err != nil {
-		defer conn.Cancel()
 		return groups, err
 	}
+	defer cursor.Close(conn.Ctx)
+
 	cursor.All(conn.Ctx, &groups)
-	defer conn.Cancel()
 	return groups, nil
 }
 

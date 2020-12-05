@@ -213,8 +213,11 @@ func (g *AppGateway) GetNode(id primitive.ObjectID) *models.Node {
 }
 
 // GetUserPermission parses the permissionfilter and returns it
-func (g *AppGateway) GetUserPermission(w http.ResponseWriter) bson.M {
+func (g *AppGateway) GetUserPermission(w http.ResponseWriter, ownerOnly bool) bson.M {
 	username := _http.GetUsernameFromHeader(w)
+	if ownerOnly {
+		return database.CreatePermissionFilter(nil, username)
+	}
 	session := g.GetSessionByUsername(username)
 	return database.CreatePermissionFilter(session.Usergroups, username)
 }
@@ -263,6 +266,16 @@ func ParseIDs(ids []string) ([]primitive.ObjectID, error) {
 		IDs = append(IDs, id)
 	}
 	return IDs, nil
+}
+
+// UnParseIDs parses a slice of hex ids into primitive.ObjectIDs
+func UnParseIDs(ids []primitive.ObjectID) []string {
+	var IDs []string
+	for _, i := range ids {
+		id := i.Hex()
+		IDs = append(IDs, id)
+	}
+	return IDs
 }
 
 // getNodeTokenMap parses the nodetoken map for the currentuser

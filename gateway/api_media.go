@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -144,7 +145,7 @@ func (g *AppGateway) AddTagByMediaID(w http.ResponseWriter, r *http.Request) {
 // creates a new tag if not in the tag document
 func (g *AppGateway) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	var tags []string
-	tags, status := DecodeTagStringsRequest(w, r, tags)
+	tags, status := _http.DecodeStringsRequest(w, r, tags)
 	if status != 0 {
 		return
 	}
@@ -185,7 +186,7 @@ func (g *AppGateway) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Reque
 		IDs = append(IDs, t.ID)
 	}
 
-	groups, err := models.GetUserGroupsByIDs(g.DB, IDs)
+	groups, err := models.GetUserGroupsByIDs(g.DB, IDs, g.GetUserPermission(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -300,16 +301,67 @@ func (g *AppGateway) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 	if id.IsZero() {
 		return
 	}
+	// get session to receive tokens for authenticated nodes
+	session := g.GetSessionByUsername(_http.GetUsernameFromHeader(w))
 	// create model by passed id
 	m := models.Media{ID: id}
+	err := m.GetMedia(g.DB, g.GetUserPermission(w, true), session.NodeTokenMap)
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not select media from database")
+		return
+	}
+
+	if failed := g.removeMediasFromNode([]models.Media{m}); len(failed) > 0 {
+		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially deleted files")
+		return
+	}
+
 	// try to delete model
 	result, err := m.DeleteMedia(g.DB)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
 	// deletion successful
 	_http.RespondWithJSON(w, http.StatusOK, result)
+}
+
+// deleteMediaByIDs deletes multiple media documents from mongodb
+func (g *AppGateway) deleteMediaByIDs(w http.ResponseWriter, r *http.Request) {
+	// parse IDs from body
+	var ids []string
+	ids, status := _http.DecodeStringsRequest(w, r, ids)
+	if status > 0 {
+		return
+	}
+
+	// parse the IDs
+	objectIDs, err := ParseIDs(ids)
+	if err != nil {
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// parse the medias from Database
+	medias, err := models.GetMediaByIDs(g.DB, objectIDs, g.GetUserPermission(w, true))
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not select medias to be deleted")
+		return
+	}
+
+	if failed := g.removeMediasFromNode(medias); len(failed) > 0 {
+		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially deleted files")
+		return
+	}
+
+	status, msg := models.BulkDeleteMedia(g.DB, objectIDs, g.GetUserPermission(w, true))
+	if status > 0 {
+		_http.RespondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+
+	_http.RespondWithJSON(w, http.StatusOK, fmt.Sprintf("Deleted %s documents", msg))
 }
 
 // GetMedia handles the webrequest for receiving all media
@@ -377,7 +429,7 @@ func (g *AppGateway) GetMedia(w http.ResponseWriter, r *http.Request) {
 	session := g.GetSessionByUsername(_http.GetUsernameFromHeader(w))
 
 	// ms, err := GetAllMedia(a.DB)
-	ms, err := models.GetMediaPage(g.DB, query, g.GetUserPermission(w), session.NodeTokenMap)
+	ms, err := models.GetMediaPage(g.DB, query, g.GetUserPermission(w, false), session.NodeTokenMap)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -402,7 +454,7 @@ func (g *AppGateway) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// try to select media
-	if err := m.GetMedia(g.DB, g.GetUserPermission(w), nodeMap); err != nil {
+	if err := m.GetMedia(g.DB, g.GetUserPermission(w, false), nodeMap); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -427,49 +479,13 @@ func (g *AppGateway) GetMediaByIDs(w http.ResponseWriter, r *http.Request) {
 	for _, id := range m {
 		IDs = append(IDs, id.ID)
 	}
-	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermission(w))
+	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
-}
-
-// GetMediaByHash Handles the webrequest for receiving Media model by ipfs hash
-// and mongo id
-func (g *AppGateway) GetMediaByHash(w http.ResponseWriter, r *http.Request) {
-	// parse request
-	vars := mux.Vars(r)
-	parts := strings.Split(vars["ipfs_id"], "_")
-	id, _ := primitive.ObjectIDFromHex(parts[1])
-	//create model by passed hash
-	m := models.Media{ID: id}
-
-	// parseNodeTokenMap
-	nodeMap, status := g.getNodeTokenMap(w)
-	if status > 0 {
-		return
-	}
-
-	// try to select media
-	if err := m.GetMedia(g.DB, g.GetUserPermission(w), nodeMap); err != nil {
-		switch err {
-		case mongo.ErrNoDocuments:
-			// model not found
-			_http.RespondWithError(w, http.StatusNotFound, "Media not found")
-		default:
-			// another error occured
-			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		}
-		return
-	}
-	if m.Sha1 != parts[0] {
-		_http.RespondWithError(w, http.StatusForbidden, "Invalid ipfs/id combination!")
-		return
-	}
-	// could select media from mongo
-	_http.RespondWithJSON(w, http.StatusOK, m)
 }
 
 // MapEventsToMedia maps an media slice to each event entry
@@ -483,7 +499,7 @@ func (g *AppGateway) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 	// iterating over all events and add them if not exist
 	username := w.Header().Get("user")
 	for _, e := range mem.Events {
-		if err := e.GetEventCreate(g.DB, g.GetUserPermission(w), username); err != nil {
+		if err := e.GetEventCreate(g.DB, g.GetUserPermission(w, false), username); err != nil {
 			_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -497,14 +513,14 @@ func (g *AppGateway) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// execute bulk update
-	_, err = models.BulkAddMediaEvent(g.DB, mediaIDs, eventIDs, g.GetUserPermission(w))
+	_, err = models.BulkAddMediaEvent(g.DB, mediaIDs, eventIDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	// select updated documents
-	media, err := models.GetMediaByIDs(g.DB, mediaIDs, g.GetUserPermission(w))
+	media, err := models.GetMediaByIDs(g.DB, mediaIDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -515,40 +531,33 @@ func (g *AppGateway) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 
 // MapGroupsToMedia maps an media slice to each event entry
 func (g *AppGateway) MapGroupsToMedia(w http.ResponseWriter, r *http.Request) {
-	mgm, status := DecodeMediaGroupMapRequest(w, r)
-	if status != 0 {
+	_helper, status := g.prepareGroupMedia(w, r)
+	if status > 0 {
 		return
 	}
 
-	var groupIDs []primitive.ObjectID
-	// iterating over all groups
-	for _, group := range mgm.Groups {
-		if err := group.GetUserGroup(g.DB, g.GetUserPermission(w)); err != nil {
-			_http.RespondWithError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		groupIDs = append(groupIDs, group.ID)
-	}
-	// parsing ids
-	mediaIDs, err := ParseIDs(mgm.MediaIDs)
-	if err != nil {
-		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
+	// share media on nodes
+	failed := g.shareMediaToGroup(_helper.Medias, _helper.Groups, "add")
+	if len(failed) > 0 {
+		// must be implemented!!!
+		_http.RespondWithError(w, http.StatusNotImplemented, "Currently, there is no machanism to handle partially failed shares")
 		return
 	}
 
 	// execute bulk update
-	_, err = models.BulkAddMediaGroup(g.DB, mediaIDs, groupIDs, g.GetUserPermission(w))
+	_, err := models.BulkAddMediaGroup(g.DB, _helper.MediaIDs, _helper.GroupIDs, g.GetUserPermission(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	// select updated documents
-	media, err := models.GetMediaByIDs(g.DB, mediaIDs, g.GetUserPermission(w))
+	media, err := models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
 	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
 }
@@ -572,19 +581,48 @@ func (g *AppGateway) MapTagsToMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// execute bulk update
-	_, err = models.BulkAddTagMedia(g.DB, tmm.Tags, IDs, g.GetUserPermission(w))
+	_, err = models.BulkAddTagMedia(g.DB, tmm.Tags, IDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
-	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermission(w))
+	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermission(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	_http.RespondWithJSON(w, http.StatusOK, media)
 	return
+}
+
+func (g *AppGateway) removeGroupsFromMedia(w http.ResponseWriter, r *http.Request) {
+	_helper, status := g.prepareGroupMedia(w, r)
+	if status > 0 {
+		return
+	}
+	if failed := g.shareMediaToGroup(_helper.Medias, _helper.Groups, "remove"); len(failed) > 0 {
+		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially removed shares")
+		return
+	}
+
+	// select updated documents
+	media, err := models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermission(w, false))
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// execute bulk update
+	_, err = models.BulkRemoveMediaGroup(g.DB, _helper.MediaIDs, _helper.GroupIDs, g.GetUserPermission(w, true))
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
+		return
+	}
+
+	_http.RespondWithJSON(w, http.StatusOK, media)
+	return
+
 }
 
 // UpdateMediaByHash handles the webrequest for updating the Media with the passed
@@ -661,7 +699,7 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verfiy node
-	if err := n.GetNode(g.DB, g.GetUserPermission(w)); err != nil {
+	if err := n.GetNode(g.DB, g.GetUserPermission(w, false), false); err != nil {
 		_http.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}

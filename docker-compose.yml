@@ -1,8 +1,36 @@
 version: '3.8'
 services:
+    keycloak:
+        depends_on: 
+            - keycloak-db
+        build:
+            dockerfile: Dockerfile.keycloak
+            context: .
+            target: "${COMPOSE_TARGET}"
+        environment: 
+            DB_VENDOR: POSTGRES
+            DB_ADDR: keycloak-db
+            DB_DATABASE: keycloak
+            DB_USER: keycloak
+            DB_SCHEMA: public
+            DB_PASSWORD: password
+            PROXY_ADDRESS_FORWARDING: 'true'
+            KEYCLOAK_USER: admin
+            KEYCLOAK_PASSWORD: admin
+        expose:
+            - 8080
+    keycloak-db:
+        image: postgres:13-alpine
+        volumes:
+            - /Users/arlindne/primboard/postgres:/var/lib/postgresql/data
+        environment:
+            POSTGRES_DB: keycloak
+            POSTGRES_USER: keycloak
+            POSTGRES_PASSWORD: password
     nginx:
         depends_on:
             - node
+            - gateway
         build:
             dockerfile: Dockerfile.nginx
             context: .
@@ -10,16 +38,19 @@ services:
         volumes:
             - ${PWD}/utils/nginx.conf:/etc/nginx/nginx.conf:rw
             - ${PWD}/utils/10-incron-watch:/etc/incron.d/10-incron-watch:ro
-            - /home/osboxes/letsencrypt_tmp/:/etc/letsencrypt/:ro
-            - /home/osboxes/primboard-node/data:/data:ro
-            - /home/osboxes/primboard-node/etc/nginx/locations:/etc/nginx/locations:rw
-            - /home/osboxes/primboard-node/etc/nginx/cache/:/etc/nginx/cache:rw
-            - /home/osboxes/primboard-node/etc/nginx/logs:/etc/nginx/logs:rw
-
+            - /Users/arlindne/primboard/letsencrypt/:/etc/letsencrypt/:ro
+            - /Users/arlindne/primboard/node/data:/data:ro
+            - /Users/arlindne/primboard/node/etc/nginx/locations:/etc/nginx/locations:rw
+            - /Users/arlindne/primboard/node/etc/nginx/cache/:/etc/nginx/cache:rw
+            - /Users/arlindne/primboard/node/etc/nginx/logs:/etc/nginx/logs:rw
+        environment: 
+            - proxy-address-forwarding=true
         ports:
             - 80:80
             - 443:443
     gateway:
+        depends_on: 
+            - keycloak
         build:
             dockerfile: Dockerfile.gateway
             context: .
@@ -36,9 +67,9 @@ services:
             - COOKIE_SAME_SITE=2
             - COOKIE_SECURE=true
             - COOKIE_TOKEN_TITLE=stoken
-            - COOKIE_DOMAIN=10.101.1.2
+            - COOKIE_DOMAIN=10.101.1.8
             - HTTP=true
-            - ALLOWED_ORIGINS=http=//localhost:4200;https://localhost:4200;http://172.17.0.1:4200;http://10.101.1.2:4200;https://10.101.1.2:4200;
+            - ALLOWED_ORIGINS=http=//localhost:4200;https://localhost:4200;http://172.17.0.1:4200;http://10.101.1.2:4200;https://10.101.1.2:4200;https://10.101.1.8:4200;
             - TAG_PREVIEW_LIMIT=5
             - SESSION_ROTATION=false
             - DEFAULT_MEDIA_PAGE_SIZE=30
@@ -46,8 +77,7 @@ services:
         expose: 
             - 8765
         volumes:
-            - /home/osboxes/generate-trusted-ssl-certificate/api:/certs
-            - /home/osboxes/generate-trusted-ssl-certificate/minica/myCert:/certs/ca-cert.pem
+            - /Users/arlindne/minica/myCert:/certs/ca-cert.pem
     node:
         depends_on:
             - gateway
@@ -67,7 +97,7 @@ services:
         expose:
             - 8766
         volumes:
-            - /home/osboxes/primboard-node/data:/data:rw
-            - /home/osboxes/primboard-node/share:/share:rw
-            - /home/osboxes/generate-trusted-ssl-certificate/minica/myCert:/certs/ca-cert.pem
-            - /home/osboxes/primboard-node/etc/nginx/locations:/etc/nginx/locations:rw
+            - /Users/arlindne/primboard/node/data:/data:rw
+            - /Users/arlindne/primboard/node/share:/share:rw
+            - /Users/arlindne/minica/myCert:/certs/ca-cert.pem
+            - /Users/arlindne/primboard/node/etc/nginx/locations:/etc/nginx/locations:rw

@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	_http "github.com/mirisbowring/primboard/helper/http"
+	"github.com/mirisbowring/primboard/internal/handler"
 	iModels "github.com/mirisbowring/primboard/internal/models"
 	"github.com/mirisbowring/primboard/internal/models/infrastructure"
 	log "github.com/sirupsen/logrus"
@@ -58,6 +59,9 @@ func (n *AppNode) Initialize(config infrastructure.NodeConfig) {
 	log.Info("Starting Initialization")
 	n.Config = &config
 	n.initializeRoutes()
+	// remove obsolete locations (could exist if crashed)
+	handler.DeleteFiles("/etc/nginx/locations")
+	//
 	resp := n.authenticateToGateway()
 	// if authentication failed due to gateway down (status == 1), retry every
 	// 10 seconds until gateway up
@@ -75,11 +79,18 @@ func (n *AppNode) Initialize(config infrastructure.NodeConfig) {
 // if logout is true, no new session token is beeing generated
 func (n *AppNode) authenticate(h http.Handler, logout bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		if fmt.Sprintf("Bearer %s", n.Config.NodeAuth.Secret) != r.Header.Get("Authorization") {
 			_http.RespondWithError(w, http.StatusUnauthorized, "authentication failed")
 			return
 		}
 		h.ServeHTTP(w, r)
+		log.WithFields(log.Fields{
+			"method":   r.Method,
+			"uri":      r.RequestURI,
+			"source":   r.RemoteAddr,
+			"duration": time.Since(start),
+		}).Info("handle request")
 	})
 }
 
