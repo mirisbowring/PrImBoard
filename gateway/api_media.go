@@ -26,16 +26,34 @@ func (g *AppGateway) AddMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// verify Tags
+	var err error
+	m.Tags, err = models.VerifyTags(g.DB, m.Tags)
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not process tags")
+		return
+	}
+	nodeID, err := primitive.ObjectIDFromHex(w.Header().Get("clientID"))
+	if err != nil {
+		log.WithFields(log.Fields{
+			"clientID": w.Header().Get("clientID"),
+			"error":    err.Error(),
+		}).Error("could not parse clientID to ObjectID")
+		_http.RespondWithError(w, http.StatusBadRequest, "coud not parse clientID to ObjectID")
+	}
+	m.NodeIDs = append(m.NodeIDs, nodeID)
+
 	// url and type are mandatory
-	if m.URL == "" || m.Type == "" {
-		_http.RespondWithError(w, http.StatusBadRequest, "URL and type cannot be empty")
+	if m.Creator == "" {
+		_http.RespondWithError(w, http.StatusBadRequest, "Creator cannot be empty")
 		return
 	}
 	// setting creation timestamp
 	m.TimestampUpload = int64(time.Now().Unix())
 	// set the username
-	m.Creator = _http.GetUsernameFromHeader(w)
+	// m.Creator = _http.GetUsernameFromHeader(w)
 	// try to insert model into db
+	log.Warn(m)
 	result, err := m.AddMedia(g.DB)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -172,56 +190,56 @@ func (g *AppGateway) AddTagsByMediaID(w http.ResponseWriter, r *http.Request) {
 	g.GetMediaByID(w, r)
 }
 
-// AddUserGroupsByMediaID appends multiple tags to the specified media
-// creates a new tag if not in the tag document
-func (g *AppGateway) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
-	var groups []models.UserGroup
-	var IDs []primitive.ObjectID
-	groups, status := DecodeUserGroupsRequest(w, r, groups)
-	if status != 0 {
-		return
-	}
-	// creating id slice
-	for _, t := range groups {
-		IDs = append(IDs, t.ID)
-	}
+// // AddUserGroupsByMediaID appends multiple tags to the specified media
+// // creates a new tag if not in the tag document
+// func (g *AppGateway) AddUserGroupsByMediaID(w http.ResponseWriter, r *http.Request) {
+// 	var groups []models.UserGroup
+// 	var IDs []primitive.ObjectID
+// 	groups, status := DecodeUserGroupsRequest(w, r, groups)
+// 	if status != 0 {
+// 		return
+// 	}
+// 	// creating id slice
+// 	for _, t := range groups {
+// 		IDs = append(IDs, t.ID)
+// 	}
 
-	groups, err := models.GetUserGroupsByIDs(g.DB, IDs, g.GetUserPermission(w, true))
-	if err != nil {
-		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+// 	groups, err := models.GetUserGroupsByIDs(g.DB, IDs, g.GetUserPermissionW(w, true))
+// 	if err != nil {
+// 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+// 		return
+// 	}
 
-	// If length does not match, receive all new IDs
-	// could be that a requested group does not exist
-	if len(groups) != len(IDs) {
-		IDs = nil
-		for _, group := range groups {
-			IDs = append(IDs, group.ID)
-		}
-	}
+// 	// If length does not match, receive all new IDs
+// 	// could be that a requested group does not exist
+// 	if len(groups) != len(IDs) {
+// 		IDs = nil
+// 		for _, group := range groups {
+// 			IDs = append(IDs, group.ID)
+// 		}
+// 	}
 
-	// verify that any valid group was specified
-	if IDs == nil {
-		_http.RespondWithError(w, http.StatusBadRequest, "No valid groups specified!")
-		return
-	}
+// 	// verify that any valid group was specified
+// 	if IDs == nil {
+// 		_http.RespondWithError(w, http.StatusBadRequest, "No valid groups specified!")
+// 		return
+// 	}
 
-	// parse ID from route
-	id := parseID(w, r)
-	if id.IsZero() {
-		return
-	}
-	// create media model by id to select from db
-	m := models.Media{ID: id}
-	// append the new tag if not present
-	if err := m.AddUserGroups(g.DB, IDs); err != nil {
-		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
-		return
-	}
-	// success
-	g.GetMediaByID(w, r)
-}
+// 	// parse ID from route
+// 	id := parseID(w, r)
+// 	if id.IsZero() {
+// 		return
+// 	}
+// 	// create media model by id to select from db
+// 	m := models.Media{ID: id}
+// 	// append the new tag if not present
+// 	if err := m.AddUserGroups(g.DB, IDs); err != nil {
+// 		_http.RespondWithError(w, http.StatusInternalServerError, "Error during document update")
+// 		return
+// 	}
+// 	// success
+// 	g.GetMediaByID(w, r)
+// }
 
 //AddTimestampByMediaID adds the creation date to the media
 func (g *AppGateway) AddTimestampByMediaID(w http.ResponseWriter, r *http.Request) {
@@ -301,11 +319,10 @@ func (g *AppGateway) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 	if id.IsZero() {
 		return
 	}
-	// get session to receive tokens for authenticated nodes
-	session := g.GetSessionByUsername(_http.GetUsernameFromHeader(w))
+
 	// create model by passed id
 	m := models.Media{ID: id}
-	err := m.GetMedia(g.DB, g.GetUserPermission(w, true), session.NodeTokenMap)
+	err := m.GetMedia(g.DB, g.GetUserPermissionW(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select media from database")
 		return
@@ -344,7 +361,7 @@ func (g *AppGateway) deleteMediaByIDs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// parse the medias from Database
-	medias, err := models.GetMediaByIDs(g.DB, objectIDs, g.GetUserPermission(w, true))
+	medias, err := models.GetMediaByIDs(g.DB, objectIDs, g.GetUserPermissionW(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select medias to be deleted")
 		return
@@ -355,7 +372,7 @@ func (g *AppGateway) deleteMediaByIDs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, msg := models.BulkDeleteMedia(g.DB, objectIDs, g.GetUserPermission(w, true))
+	status, msg := models.BulkDeleteMedia(g.DB, objectIDs, g.GetUserPermissionW(w, true))
 	if status > 0 {
 		_http.RespondWithError(w, http.StatusInternalServerError, msg)
 		return
@@ -426,10 +443,8 @@ func (g *AppGateway) GetMedia(w http.ResponseWriter, r *http.Request) {
 		query.Size = i
 	}
 
-	session := g.GetSessionByUsername(_http.GetUsernameFromHeader(w))
-
-	// ms, err := GetAllMedia(a.DB)
-	ms, err := models.GetMediaPage(g.DB, query, g.GetUserPermission(w, false), session.NodeTokenMap)
+	// ms, err := GetAllMedia(a.DB)‚s
+	ms, err := models.GetMediaPage(g.DB, query, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -448,13 +463,13 @@ func (g *AppGateway) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	m := models.Media{ID: id}
 
 	// parseNodeTokenMap
-	nodeMap, status := g.getNodeTokenMap(w)
-	if status > 0 {
-		return
-	}
+	// nodeMap, status := g.getNodeTokenMap(w)
+	// if status > 0 {
+	// 	return
+	// }
 
 	// try to select media
-	if err := m.GetMedia(g.DB, g.GetUserPermission(w, false), nodeMap); err != nil {
+	if err := m.GetMedia(g.DB, g.GetUserPermissionW(w, false)); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -479,7 +494,7 @@ func (g *AppGateway) GetMediaByIDs(w http.ResponseWriter, r *http.Request) {
 	for _, id := range m {
 		IDs = append(IDs, id.ID)
 	}
-	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermission(w, false))
+	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -497,9 +512,9 @@ func (g *AppGateway) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 
 	var eventIDs []primitive.ObjectID
 	// iterating over all events and add them if not exist
-	username := w.Header().Get("user")
+	username := _http.GetUsernameFromHeader(w)
 	for _, e := range mem.Events {
-		if err := e.GetEventCreate(g.DB, g.GetUserPermission(w, false), username); err != nil {
+		if err := e.GetEventCreate(g.DB, g.GetUserPermissionW(w, false), username); err != nil {
 			_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -513,14 +528,14 @@ func (g *AppGateway) MapEventsToMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// execute bulk update
-	_, err = models.BulkAddMediaEvent(g.DB, mediaIDs, eventIDs, g.GetUserPermission(w, false))
+	_, err = models.BulkAddMediaEvent(g.DB, mediaIDs, eventIDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	// select updated documents
-	media, err := models.GetMediaByIDs(g.DB, mediaIDs, g.GetUserPermission(w, false))
+	media, err := models.GetMediaByIDs(g.DB, mediaIDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -545,14 +560,14 @@ func (g *AppGateway) MapGroupsToMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// execute bulk update
-	_, err := models.BulkAddMediaGroup(g.DB, _helper.MediaIDs, _helper.GroupIDs, g.GetUserPermission(w, true))
+	_, err := models.BulkAddMediaGroup(g.DB, _helper.MediaIDs, _helper.GroupIDs, g.GetUserPermissionW(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
 	// select updated documents
-	media, err := models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermission(w, false))
+	media, err := models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -581,13 +596,13 @@ func (g *AppGateway) MapTagsToMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// execute bulk update
-	_, err = models.BulkAddTagMedia(g.DB, tmm.Tags, IDs, g.GetUserPermission(w, false))
+	_, err = models.BulkAddTagMedia(g.DB, tmm.Tags, IDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
 	}
 
-	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermission(w, false))
+	media, err := models.GetMediaByIDs(g.DB, IDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -607,14 +622,14 @@ func (g *AppGateway) removeGroupsFromMedia(w http.ResponseWriter, r *http.Reques
 	}
 
 	// select updated documents
-	media, err := models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermission(w, false))
+	media, err := models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	// execute bulk update
-	_, err = models.BulkRemoveMediaGroup(g.DB, _helper.MediaIDs, _helper.GroupIDs, g.GetUserPermission(w, true))
+	_, err = models.BulkRemoveMediaGroup(g.DB, _helper.MediaIDs, _helper.GroupIDs, g.GetUserPermissionW(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "Could not bulk update documents!")
 		return
@@ -699,10 +714,12 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verfiy node
-	if err := n.GetNode(g.DB, g.GetUserPermission(w, false), false); err != nil {
+	if err := n.GetNode(g.DB, g.GetUserPermissionW(w, false), false); err != nil {
 		_http.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
+
+	log.Info(n)
 
 	// grep filemeta
 	meta := r.FormValue("filemeta")
@@ -750,7 +767,7 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := g.GetNode(n.ID).Secret
+	token := g.Nodes[n.ID].Secret
 	if token == "" {
 		log.WithFields(log.Fields{
 			"node": n.ID,

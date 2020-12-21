@@ -24,6 +24,21 @@ func DecodeFilesGroupsMapRequest(w http.ResponseWriter, r *http.Request) (maps.F
 	return maps, 0
 }
 
+// DecodeStringRequest decodes the api request into the passed slice
+// defers request.body.close
+// responds with decode error if occurs
+// status 0 => ok || status 1 => error
+func DecodeStringRequest(w http.ResponseWriter, r *http.Request, t *string) (*string, int) {
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	if err := decoder.Decode(t); err != nil {
+		// an decode error occured
+		RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return nil, 1
+	}
+	return t, 0
+}
+
 // DecodeStringsRequest decodes the api request into the passed slice
 // responds with decode error if occurs
 // status 0 => ok || status 1 => error

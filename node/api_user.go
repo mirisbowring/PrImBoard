@@ -3,10 +3,11 @@ package node
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	_http "github.com/mirisbowring/primboard/helper/http"
 	"github.com/mirisbowring/primboard/internal/handler"
-	"github.com/mirisbowring/primboard/internal/handler/session"
 	"github.com/mirisbowring/primboard/internal/models"
 	log "github.com/sirupsen/logrus"
 )
@@ -49,6 +50,22 @@ func (n *AppNode) authenticateUser(w http.ResponseWriter, r *http.Request) {
 	_http.RespondWithJSON(w, http.StatusOK, "authentication successfull")
 }
 
+func (n *AppNode) generateSessionCookie(w http.ResponseWriter, r *http.Request) {
+	cookie := http.Cookie{
+		Name:     "keycloak-jwt",
+		Value:    strings.Replace(r.Header.Get("Authorization"), "Bearer ", "", 1),
+		Expires:  time.Now().Add(time.Minute + 5),
+		Path:     "/",
+		Secure:   true,
+		HttpOnly: false,
+		Domain:   "10.101.1.8",
+		SameSite: http.SameSiteLaxMode,
+	}
+	http.SetCookie(w, &cookie)
+
+	_http.RespondWithJSON(w, http.StatusOK, "created cookie")
+}
+
 func (n *AppNode) unauthenticateUser(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -57,7 +74,7 @@ func (n *AppNode) unauthenticateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// get session for user
-	s := session.GetSessionByUsername(n.Sessions, username)
+	s := handler.GetSessionByUsername(n.Sessions, username)
 	if s == nil || (s == &models.Session{}) || s.Token == "" {
 		log.WithFields(log.Fields{
 			"username": username,
@@ -71,7 +88,7 @@ func (n *AppNode) unauthenticateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// remove session
-	n.Sessions = session.RemoveSession(n.Sessions, s.Token)
+	n.Sessions = handler.RemoveSession(n.Sessions, s.Token)
 	// everything went well
 	_http.RespondWithJSON(w, http.StatusOK, "unauthenticated user")
 }

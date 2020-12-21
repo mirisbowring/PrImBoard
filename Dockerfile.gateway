@@ -1,7 +1,6 @@
-# syntax=docker/dockerfile:experimental
+# syntax=docker/dockerfile:1.0-experimental
 
 FROM jrottenberg/ffmpeg:4.1-alpine AS base
-ENTRYPOINT [ ]
 
 COPY --from=golang:1.15.5-alpine /usr/local/go/ /usr/local/go/
  
@@ -36,5 +35,7 @@ FROM jrottenberg/ffmpeg:4.1-alpine AS run
 COPY --from=build /gateway-api .
 
 EXPOSE 8765
-ENTRYPOINT [ ]
+
+ENTRYPOINT [ "/usr/bin/env" ]
+
 CMD [ "/gateway-api", "-env" ]

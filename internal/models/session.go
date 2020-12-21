@@ -1,8 +1,6 @@
 package models
 
 import (
-	"crypto/rand"
-	"fmt"
 	"log"
 	"time"
 
@@ -44,13 +42,13 @@ func (s *Session) IsValid() bool {
 }
 
 // RenewToken creates a new token and resets the expiry interval
-func (s *Session) RenewToken() string {
-	b := make([]byte, 30)
-	rand.Read(b)
-	s.Token = fmt.Sprintf("%x", b)
-	s.Expire = time.Now().Add(1 * time.Hour)
-	return s.Token
-}
+// func (s *Session) RenewToken() string {
+// 	b := make([]byte, 30)
+// 	rand.Read(b)
+// 	s.Token = fmt.Sprintf("%x", b)
+// 	s.Expire = time.Now().Add(1 * time.Hour)
+// 	return s.Token
+// }
 
 // RemoveEmptySessions removes nil objects from session slice
 func RemoveEmptySessions(sessions []*Session) []*Session {

@@ -17,14 +17,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// CreateFile creates the file on the filesystem for the user
+// CreateFileFromMultipart creates the file on the filesystem for the user
 //
 // 0 -> ok
 // 1 -> unknown transmission type
 // 2 -> could not create path
 // 3 -> could not create file
 // 4 -> could not copy uploaded file into created file
-func CreateFile(basePath string, file multipart.File, header *multipart.FileHeader, username string, _type string, w http.ResponseWriter) int {
+func CreateFileFromMultipart(basePath string, file multipart.File, header *multipart.FileHeader, username string, _type string, w http.ResponseWriter) int {
 	var path string
 	// eval upload type
 	switch _type {
@@ -48,38 +48,63 @@ func CreateFile(basePath string, file multipart.File, header *multipart.FileHead
 		return 2
 	}
 
-	// create file
 	filename := filepath.Join(path, header.Filename)
-	dst, err := os.Create(filename)
+	status := CreateFile(filename, file)
+	switch status {
+	case 0:
+		// success
+		return 0
+	case 1:
+		// creation failed
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not create file")
+		return 3
+	case 2:
+		// write failed
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not write file to filesystem")
+		return 4
+	default:
+		// unexpected status code
+		log.WithFields(log.Fields{
+			"status": status,
+		}).Error("unexpected status from function")
+		_http.RespondWithError(w, http.StatusInternalServerError, "Could not process file")
+		return 5
+	}
+}
+
+// CreateFile writes a reader to the filesystem to as passed absolute filename
+//
+// 0 -> ok
+// 1 -> could not create file
+// 2 -> could not write file
+func CreateFile(filepath string, reader io.Reader) int {
+	// create file
+	log.Warn(filepath)
+	dst, err := os.Create(filepath)
 	defer dst.Close()
 	if err != nil {
 		log.WithFields(log.Fields{
-			"path":     path,
-			"filename": filename,
+			"filepath": filepath,
 			"error":    err.Error(),
 		})
 		log.Errorf("could not create file")
-		_http.RespondWithError(w, http.StatusInternalServerError, "could not create file")
-		return 3
+		return 1
 	}
 
 	// Copy the uploaded file to the created file on the filesystem
-	if _, err := io.Copy(dst, file); err != nil {
+	if _, err := io.Copy(dst, reader); err != nil {
 		log.WithFields(log.Fields{
-			"path":     path,
-			"filename": filename,
+			"filepath": filepath,
 			"error":    err.Error(),
 		}).Error("could not write file to filesystem")
-		_http.RespondWithError(w, http.StatusInternalServerError, "could not write file to filesystem")
-		return 4
+		return 2
 	}
 
+	// creation successfull
 	log.WithFields(log.Fields{
-		"path":     path,
-		"filename": filename,
+		"filepath": filepath,
 	}).Info("added file to filesystem")
 
-	// success
 	return 0
 }
 
@@ -97,6 +122,23 @@ func createPath(path string) (int, string) {
 	}
 	log.WithFields(log.Fields{"path": path}).Debug("created path")
 	return 0, ""
+}
+
+// CreateThumbnail uses ffmpeg to generate a thumbnail for the given reader
+func CreateThumbnail(filepath string) io.Reader {
+	// create file pointer
+	r, err := os.Open(filepath)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"filepath": filepath,
+			"error":    err.Error(),
+		}).Error("could not open file to create thumbnail")
+		return nil
+	}
+	defer r.Close()
+	// create thumbnail and receive pointer
+	rt, _ := helper.Thumbnail(r, 128)
+	return rt
 }
 
 // DeleteFile deletes the specified file for the specified user. It deletes all

@@ -146,12 +146,12 @@ func addMediaToNode(filePath string, m models.Media, node models.Node, client *h
 	defer file.Close()
 
 	// generate hash
-	if m.Sha1, err = helper.GenerateSHA1(file); err != nil {
-		return m, err
+	if m.Sha1 = helper.GenerateSHA1(file); m.Sha1 == "" {
+		return m, errors.New("could not generate hash for file")
 	}
 
 	// create thumbanil
-	rt := createThumbnail(filePath)
+	rt := handler.CreateThumbnail(filePath)
 	m.FileNameThumb = handler.ParseFileName(m.Sha1, m.Creator, true, m.Extension)
 	m.FileName = handler.ParseFileName(m.Sha1, m.Creator, false, m.Extension)
 
@@ -213,15 +213,15 @@ func addMediaToNode(filePath string, m models.Media, node models.Node, client *h
 		"status-code": res.StatusCode,
 	}
 
-	// handling response
-	if res.StatusCode == 201 {
+	switch res.StatusCode {
+	case http.StatusCreated:
 		log.WithFields(logfields).Info("media created on node")
 		handler.RemoveFile(filePath)
 
 		// add node to media
 		m.NodeIDs = append(m.NodeIDs, node.ID)
 		return m, nil
-	} else {
+	default:
 		msg := "could not push media to node"
 		log.WithFields(logfields).Error(msg)
 		return m, errors.New(msg)
@@ -249,7 +249,7 @@ func (g *AppGateway) removeMediasFromNode(medias []models.Media) map[string][]st
 				requests[id] = val
 			} else {
 				// add node to node map
-				nodes[id] = *g.GetNode(node.ID)
+				nodes[id] = *g.Nodes[node.ID]
 				// create new key for node with groups to share with
 				requests[id] = []string{med.FileName}
 			}
@@ -299,8 +299,8 @@ func (g *AppGateway) removeMediasFromNode(medias []models.Media) map[string][]st
 			break
 		case 902:
 			var err _http.ErrorJSON
-			if err := json.NewDecoder(res.Body).Decode(err); err != nil {
-				logfields["error"] = err.Error()
+			if e := json.NewDecoder(res.Body).Decode(&err); e != nil {
+				logfields["error"] = e.Error()
 				log.WithFields(logfields).Error("cannot decode response body")
 				break
 			}
@@ -319,15 +319,6 @@ func (g *AppGateway) removeMediasFromNode(medias []models.Media) map[string][]st
 
 	return failed
 
-}
-
-func createThumbnail(filename string) io.Reader {
-	// create file pointer
-	r, _ := os.Open(filename)
-	defer r.Close()
-	// create thumbnail and receive pointer
-	rt, _ := helper.Thumbnail(r, 128)
-	return rt
 }
 
 // prepareGroupMedia parses the sharing from body and chooses all related groups
@@ -350,8 +341,6 @@ func (g *AppGateway) prepareGroupMedia(w http.ResponseWriter, r *http.Request) (
 		return nil, 1
 	}
 
-	log.Info(mgm)
-
 	// check that there is anything, that could be shared
 	if len(mgm.Groups) == 0 || len(mgm.MediaIDs) == 0 {
 		_http.RespondWithJSON(w, http.StatusBadRequest, "nothing specified to share")
@@ -365,15 +354,13 @@ func (g *AppGateway) prepareGroupMedia(w http.ResponseWriter, r *http.Request) (
 		return nil, 3
 	}
 
-	log.Info(_helper.MediaIDs)
-
 	// extract group ids from groups
 	for _, group := range mgm.Groups {
 		_helper.GroupIDs = append(_helper.GroupIDs, group.ID)
 	}
 
 	// select all groups from list, the user has access to
-	_helper.Groups, err = models.GetUserGroupsByIDs(g.DB, _helper.GroupIDs, g.GetUserPermission(w, false))
+	_helper.Groups, err = models.GetUserGroupsByIDs(g.DB, _helper.GroupIDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select matching groups from database")
 		return nil, 4
@@ -386,7 +373,7 @@ func (g *AppGateway) prepareGroupMedia(w http.ResponseWriter, r *http.Request) (
 	}
 
 	// select all medias from list, the user is Owner of
-	_helper.Medias, err = models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermission(w, true))
+	_helper.Medias, err = models.GetMediaByIDs(g.DB, _helper.MediaIDs, g.GetUserPermissionW(w, true))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select matching medias from database")
 		return nil, 6
@@ -465,8 +452,9 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 				val.Filenames = append(val.Filenames, med.FileName)
 				requests[id] = val
 			} else {
+				log.Info(g.Nodes)
 				// add node to node map
-				nodes[id] = *g.GetNode(node.ID)
+				nodes[id] = *(g.Nodes)[node.ID]
 				// create new key for node with groups to share with
 				requests[id] = maps.FilesGroupsMap{
 					Filenames: []string{med.FileName},
@@ -494,15 +482,18 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 			"action":      action,
 		}
 
+		// refresh keycloaktoken in neccessary
+		g.keycloakRefreshToken()
+
 		var res *http.Response
 		var status int
 		var msg string
 		switch action {
 		case "add":
-			res, status, msg = _http.SendRequest(g.HTTPClient, "POST", endpoint, node.Secret, body, contentType)
+			res, status, msg = _http.SendRequest(g.HTTPClient, "POST", endpoint, g.KeycloakToken.AccessToken, body, contentType)
 			break
 		case "remove":
-			res, status, msg = _http.SendRequest(g.HTTPClient, "DELETE", endpoint, node.Secret, body, contentType)
+			res, status, msg = _http.SendRequest(g.HTTPClient, "DELETE", endpoint, g.KeycloakToken.AccessToken, body, contentType)
 			break
 		default:
 			log.WithFields(logfields).Error("unknown action specified")
@@ -526,6 +517,9 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 		case http.StatusCreated:
 			log.WithFields(logfields).Info("shared files successfully")
 			break
+		case http.StatusUnauthorized:
+			log.WithFields(logfields).Error("could not authorize to node")
+			break
 		case http.StatusBadRequest:
 			bytes, err := ioutil.ReadAll(res.Body)
 			if err != nil {
@@ -537,7 +531,7 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 			break
 		case 901:
 			var err _http.ErrorJSON
-			json.NewDecoder(res.Body).Decode(err)
+			json.NewDecoder(res.Body).Decode(&err)
 			fail, ok := err.Payload.([]maps.FilesGroupsMap)
 			if !ok {
 				log.WithFields(logfields).Error("cannot parse payload to FilesGroupsMap")

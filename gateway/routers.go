@@ -38,7 +38,7 @@ func (g *AppGateway) initializeRoutes() {
 	g.Router.Handle("/api/v1/media/{id}/description", g.Authenticate(http.HandlerFunc(g.AddDescriptionByMediaID), false)).Methods("PUT")
 	g.Router.Handle("/api/v1/media/{id}/tag", g.Authenticate(http.HandlerFunc(g.AddTagByMediaID), false)).Methods("POST")
 	g.Router.Handle("/api/v1/media/{id}/tags", g.Authenticate(http.HandlerFunc(g.AddTagsByMediaID), false)).Methods("POST")
-	g.Router.Handle("/api/v1/media/{id}/usergroups", g.Authenticate(http.HandlerFunc(g.AddUserGroupsByMediaID), false)).Methods("POST")
+	// g.Router.Handle("/api/v1/media/{id}/usergroups", g.Authenticate(http.HandlerFunc(g.AddUserGroupsByMediaID), false)).Methods("POST")
 	g.Router.Handle("/api/v1/media/{id}/timestamp", g.Authenticate(http.HandlerFunc(g.AddTimestampByMediaID), false)).Methods("PUT")
 	g.Router.Handle("/api/v1/media/{id}/title", g.Authenticate(http.HandlerFunc(g.AddTitleByMediaID), false)).Methods("PUT")
 	g.Router.Handle("/api/v1/mediaByHash/{ipfs_id}", g.Authenticate(http.HandlerFunc(g.UpdateMediaByHash), false)).Methods("PUT")
@@ -62,7 +62,7 @@ func (g *AppGateway) initializeRoutes() {
 	g.Router.Handle("/api/v1/user/{username}", g.Authenticate(http.HandlerFunc(g.DeleteUser), false)).Methods("DELETE")
 	g.Router.Handle("/api/v1/user/{username}", g.Authenticate(http.HandlerFunc(g.GetUserByUsername), false)).Methods("GET")
 	g.Router.Handle("/api/v1/user/{username}/settings", g.Authenticate(http.HandlerFunc(g.GetSettingsByUsername), false)).Methods("GET")
-	g.Router.HandleFunc("/api/v1/login", g.LoginUser).Methods("POST")
+	// g.Router.HandleFunc("/api/v1/login", g.LoginUser).Methods("POST")
 	g.Router.Handle("/api/v1/logout", g.Authenticate(http.HandlerFunc(g.LogoutUser), true)).Methods("POST")
 	g.Router.Handle("/api/v1/user/{username}", g.Authenticate(http.HandlerFunc(g.UpdateUser), false)).Methods("PUT")
 	// usergroup
@@ -77,7 +77,7 @@ func (g *AppGateway) initializeRoutes() {
 	g.Router.Handle("/api/v1/usergroup/{id}/users", g.Authenticate(http.HandlerFunc(g.RemoveUsersFromUserGroupByID), false)).Methods("DELETE")
 	g.Router.Handle("/api/v1/usergroup/{id}/users", g.Authenticate(http.HandlerFunc(g.AddUsersToUserGroupByID), false)).Methods("POST")
 	// infrastructure
-	g.Router.HandleFunc("/api/v2/infrastructure/node/{id}/authenticate", g.AuthenticateNode).Methods("POST")
+	g.Router.Handle("/api/v2/infrastructure/node/authenticate", g.Authenticate(http.HandlerFunc(g.authenticateNode), false)).Methods("POST")
 }
 
 // Index controller

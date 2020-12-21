@@ -6,7 +6,6 @@ services:
         build:
             dockerfile: Dockerfile.keycloak
             context: .
-            target: "${COMPOSE_TARGET}"
         environment: 
             DB_VENDOR: POSTGRES
             DB_ADDR: keycloak-db
@@ -17,8 +16,6 @@ services:
             PROXY_ADDRESS_FORWARDING: 'true'
             KEYCLOAK_USER: admin
             KEYCLOAK_PASSWORD: admin
-        expose:
-            - 8080
     keycloak-db:
         image: postgres:13-alpine
         volumes:
@@ -29,7 +26,7 @@ services:
             POSTGRES_PASSWORD: password
     nginx:
         depends_on:
-            - node
+            # - node
             - gateway
         build:
             dockerfile: Dockerfile.nginx
@@ -69,13 +66,15 @@ services:
             - COOKIE_TOKEN_TITLE=stoken
             - COOKIE_DOMAIN=10.101.1.8
             - HTTP=true
-            - ALLOWED_ORIGINS=http=//localhost:4200;https://localhost:4200;http://172.17.0.1:4200;http://10.101.1.2:4200;https://10.101.1.2:4200;https://10.101.1.8:4200;
+            - KEYCLOAK_URL=https://10.101.1.8/keycloak
+            - KEYCLOAK_REALM=primboard
+            - KEYCLOAK_CLIENT_ID=primboard-gateway
+            - KEYCLOAK_SECRET=d73496b6-4915-4314-8acd-4bfcbdc6e40f
+            - ALLOWED_ORIGINS=https://10.101.1.8:4200
             - TAG_PREVIEW_LIMIT=5
             - SESSION_ROTATION=false
             - DEFAULT_MEDIA_PAGE_SIZE=30
             - INVITE_VALIDITY=3
-        expose: 
-            - 8765
         volumes:
             - /Users/arlindne/minica/myCert:/certs/ca-cert.pem
     node:
@@ -90,12 +89,14 @@ services:
             - TARGETPATH=/share
             - CA_CERT=/certs/ca-cert.pem
             - GATEWAY_URL=http://gateway:8765
+            - KEYCLOAK_URL=https://10.101.1.8/keycloak
+            - KEYCLOAK_REALM=primboard
+            - KEYCLOAK_CLIENT_ID=5f9eacd7e2c078a2988b9901
+            - KEYCLOAK_SECRET=fab4f5b2-c33f-4ddf-8d77-187c4ae8cbb1
             - PORT=8766
-            - ALLOWED_ORIGINS=http://gateway:8765
+            - ALLOWED_ORIGINS=http://gateway:8765;https://10.101.1.8:4200
             - NODE_AUTH_ID=5f9eacd7e2c078a2988b9901
             - NODE_AUTH_SECRET=sdfnsdfjhsduifhsdiufhsdiuofhjsdi
-        expose:
-            - 8766
         volumes:
             - /Users/arlindne/primboard/node/data:/data:rw
             - /Users/arlindne/primboard/node/share:/share:rw

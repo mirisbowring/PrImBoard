@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:experimental
+# syntax=docker/dockerfile:1.0-experimental
 
 FROM nginx:1.19.4-alpine AS build
 

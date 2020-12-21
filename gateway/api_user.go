@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/mux"
 	_http "github.com/mirisbowring/primboard/helper/http"
-	"github.com/mirisbowring/primboard/internal/handler/infrastructure"
 	"github.com/mirisbowring/primboard/models"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -141,79 +140,79 @@ func (g *AppGateway) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
 	_http.RespondWithJSON(w, http.StatusOK, u)
 }
 
-// LoginUser Handles the webrequest for logging the user in
-func (g *AppGateway) LoginUser(w http.ResponseWriter, r *http.Request) {
-	var u models.User
-	// decode request into model
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&u); err != nil {
-		// an decode error occured
-		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-	defer r.Body.Close()
-	// validate that username is not empty to prevent high db load
-	if u.Username == "" {
-		_http.RespondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
-		return
-	}
-	// read corresponding user from db
-	var us models.User
-	us.Username = u.Username
-	if err := us.GetUser(g.DB); err != nil {
-		switch err {
-		case mongo.ErrNoDocuments:
-			// model not found
-			_http.RespondWithError(w, http.StatusForbidden, "Login Failed!")
-		default:
-			// any other error occured
-			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		}
-		return
-	}
+// // LoginUser Handles the webrequest for logging the user in
+// func (g *AppGateway) LoginUser(w http.ResponseWriter, r *http.Request) {
+// 	var u models.User
+// 	// decode request into model
+// 	decoder := json.NewDecoder(r.Body)
+// 	if err := decoder.Decode(&u); err != nil {
+// 		// an decode error occured
+// 		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+// 		return
+// 	}
+// 	defer r.Body.Close()
+// 	// validate that username is not empty to prevent high db load
+// 	if u.Username == "" {
+// 		_http.RespondWithError(w, http.StatusBadRequest, "Username cannot be empty!")
+// 		return
+// 	}
+// 	// read corresponding user from db
+// 	var us models.User
+// 	us.Username = u.Username
+// 	if err := us.GetUser(g.DB); err != nil {
+// 		switch err {
+// 		case mongo.ErrNoDocuments:
+// 			// model not found
+// 			_http.RespondWithError(w, http.StatusForbidden, "Login Failed!")
+// 		default:
+// 			// any other error occured
+// 			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+// 		}
+// 		return
+// 	}
 
-	// hash passed password and compare
-	if err := MatchesBcrypt(u.Password, us.Password); err != nil {
-		// Passwords do not match
-		_http.RespondWithError(w, http.StatusForbidden, "Login Failed!")
-		return
-	}
+// 	// hash passed password and compare
+// 	if err := MatchesBcrypt(u.Password, us.Password); err != nil {
+// 		// Passwords do not match
+// 		_http.RespondWithError(w, http.StatusForbidden, "Login Failed!")
+// 		return
+// 	}
 
-	// Create new Session
-	session := g.NewSession(u, g.DB)
+// 	// Create new Session
+// 	// session := g.NewSession(u, g.DB)
 
-	// select nodes, the user has access to
-	nodes, err := models.GetAllNodes(g.DB, g.GetUserPermission(w, false), "auth")
-	if err != nil {
-		_http.RespondWithError(w, http.StatusInternalServerError, "could not retrieve nodes")
-		return
-	}
+// 	// select nodes, the user has access to
+// 	// nodes, err := models.GetAllNodes(g.DB, g.GetUserPermission(w, false), "auth")
+// 	// if err != nil {
+// 	// 	_http.RespondWithError(w, http.StatusInternalServerError, "could not retrieve nodes")
+// 	// 	return
+// 	// }
 
-	// authenticate user to nodes
-	if status, msg := infrastructure.NodeAuthentication(session, nodes, true, g.HTTPClient); status > 0 {
-		_http.RespondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
+// 	// authenticate user to nodes
+// 	// if status, msg := handler.NodeAuthentication(session, nodes, true, g.HTTPClient); status > 0 {
+// 	// 	_http.RespondWithError(w, http.StatusInternalServerError, msg)
+// 	// 	return
+// 	// }
 
-	// append session and create cookie
-	g.Sessions = append(g.Sessions, session)
-	g.SetSessionCookie(&w, r, session)
+// 	// append session and create cookie
+// 	// g.Sessions = append(g.Sessions, session)
+// 	// g.SetSessionCookie(&w, r, session)
 
-	// assuming that the user was logged in
-	_http.RespondWithJSON(w, http.StatusOK, "Login was successful!")
-}
+// 	// assuming that the user was logged in
+// 	_http.RespondWithJSON(w, http.StatusOK, "Login was successful!")
+// }
 
 // LogoutUser handles the webrequest for logging the user out
 func (g *AppGateway) LogoutUser(w http.ResponseWriter, r *http.Request) {
-	session := g.GetSessionByUsername(_http.GetUsernameFromHeader(w))
+	// session := g.GetSessionByUsername(_http.GetUsernameFromHeader(w))
 	// unauthenticating user from nodes
-	if status, msg := infrastructure.NodeAuthentication(session, g.Nodes, false, g.HTTPClient); status > 0 {
-		_http.RespondWithError(w, http.StatusInternalServerError, msg)
-		return
-	}
-
+	// if status, msg := handler.NodeAuthentication(session, g.Nodes, false, g.HTTPClient); status > 0 {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, msg)
+	// 	return
+	// }
+	//
 	// remove session from session store and delete from response
-	g.CloseSession(&w, r)
+	// g.CloseSession(&w, r)
 
 	_http.RespondWithJSON(w, http.StatusNoContent, "Logout was successfull!")
 }

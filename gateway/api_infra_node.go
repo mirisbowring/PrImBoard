@@ -1,37 +1,47 @@
 package gateway
 
 import (
-	"io/ioutil"
 	"net/http"
 	"time"
 
 	_http "github.com/mirisbowring/primboard/helper/http"
-	"github.com/mirisbowring/primboard/internal/handler/infrastructure"
+	"github.com/mirisbowring/primboard/internal/handler"
+
 	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // AuthenticateNode selects the specified node from db and verifies the psk
-func (g *AppGateway) AuthenticateNode(w http.ResponseWriter, r *http.Request) {
-	var node = models.Node{ID: _http.ParsePrimitiveID(w, r)}
+func (g *AppGateway) authenticateNode(w http.ResponseWriter, r *http.Request) {
+	id := w.Header().Get("clientID")
+	if id == "" {
+		log.Error("clientID not specified")
+		_http.RespondWithError(w, http.StatusBadRequest, "clientID not specified")
+		return
+	}
+
+	// parse ID to ObjectID
+	nodeID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"clientID": id,
+			"error":    err.Error(),
+		}).Error("could not parse ObjectID from clientID")
+		_http.RespondWithError(w, http.StatusBadRequest, "could not parse ObjectID from clientID")
+		return
+	}
+
+	var node = models.Node{ID: nodeID}
 
 	log.WithFields(log.Fields{
 		"node":          node.ID,
 		"authenticated": false,
 	}).Info("node tries to authenticate")
 
-	defer r.Body.Close()
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		// an decode error occured
-		_http.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
-	psk := string(body)
-
 	// select node from database
-	if err := node.GetNode(g.DB, bson.M{"secret": psk}, true); err != nil {
+	if err := node.GetNode(g.DB, bson.M{"_id": node.ID}, true); err != nil {
 		log.WithFields(log.Fields{
 			"node":          node.ID,
 			"authenticated": false,
@@ -51,12 +61,9 @@ func (g *AppGateway) AuthenticateNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// add secret to node since it will not be selected from database
-	node.Secret = psk
-
 	// append node if not in list already
-	if n := g.GetNode(node.ID); n == nil {
-		g.Nodes = append(g.Nodes, node)
+	if n := g.Nodes[node.ID]; n == nil {
+		g.Nodes[node.ID] = &node
 	}
 
 	log.WithFields(log.Fields{
@@ -64,7 +71,7 @@ func (g *AppGateway) AuthenticateNode(w http.ResponseWriter, r *http.Request) {
 		"authenticated": true,
 	}).Info("node authenticated to api")
 
-	go g.syncUserAuthentication(node)
+	// go g.syncUserAuthentication(node)
 
 	// respond with ok
 	_http.RespondWithJSON(w, http.StatusOK, "")
@@ -87,7 +94,7 @@ func (g *AppGateway) syncUserAuthentication(node models.Node) {
 		if session.Token != "" {
 			continue
 		}
-		status, msg := infrastructure.NodeAuthentication(session, []models.Node{node}, true, g.HTTPClient)
+		status, msg := handler.NodeAuthentication(session, []models.Node{node}, true, g.HTTPClient)
 		if status > 0 {
 			log.WithFields(log.Fields{
 				"username": session.User.Username,

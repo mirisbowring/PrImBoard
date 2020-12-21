@@ -12,16 +12,20 @@ import (
 func (n *AppNode) initializeRoutes() {
 	log.Debug("initializing routes")
 	n.Router = mux.NewRouter().StrictSlash(true)
+	n.Router.MethodNotAllowedHandler = n.methodNotAllowedHandler()
 	// index
 	n.Router.HandleFunc("/api/v1/", n.index).Methods("GET")
 	// files
 	// rela
+	n.Router.Handle("/api/v1/file", n.authenticate(http.HandlerFunc(n.uploadFile), false)).Methods("POST")
 	n.Router.Handle("/api/v1/file/{username}", n.authenticate(http.HandlerFunc(n.addFile), false)).Methods("POST")
 	n.Router.Handle("/api/v1/file/{username}/{filename}", n.authenticate(http.HandlerFunc(n.deleteFile), false)).Methods("DELETE")
+	n.Router.Handle("/api/v1/file/{identifier}/{filename}", n.authenticate(http.HandlerFunc(n.getFile), false)).Methods("GET").Queries("thumb", "{thumb}", "group", "{group}", "cookieAuth", "{cookieAuth}")
 	n.Router.Handle("/api/v1/files/{username}/remove", n.authenticate(http.HandlerFunc(n.deleteFiles), false)).Methods("POST")
 	n.Router.Handle("/api/v1/files/{username}/share", n.authenticate(http.HandlerFunc(n.shareFiles), false)).Methods("POST")
 	n.Router.Handle("/api/v1/files/{username}/share", n.authenticate(http.HandlerFunc(n.deleteShares), false)).Methods("DELETE")
 
+	n.Router.Handle("/api/v1/session", n.authenticate(http.HandlerFunc(n.generateSessionCookie), false)).Methods("GET")
 	n.Router.Handle("/api/v1/user/{username}/authenticate", n.authenticate(http.HandlerFunc(n.authenticateUser), false)).Methods("POST")
 	n.Router.Handle("/api/v1/user/{username}/unauthenticate", n.authenticate(http.HandlerFunc(n.unauthenticateUser), false)).Methods("POST")
 }

@@ -148,7 +148,7 @@ func (e *Event) GetEvent(db *mongo.Database, permission bson.M) error {
 // GetEventCreate selects the passed event from database -> creates if not exist
 func (e *Event) GetEventCreate(db *mongo.Database, permission bson.M, creator string) error {
 	// read event if ID was specified
-	if e.ID.Hex() != "" {
+	if e.ID.Hex() != "" && !e.ID.IsZero() {
 		if err := e.GetEvent(db, permission); err != nil {
 			log.Error(err)
 			switch err {

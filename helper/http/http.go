@@ -1,11 +1,14 @@
 package http
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -18,9 +21,56 @@ type ErrorJSON struct {
 	Payload interface{} `json:"payload"`
 }
 
+// GenerateHTTPClient parses the passed cert and adds it to the certpool of a
+// custom http client. if insecure enabled, it skips cert validation.
+func GenerateHTTPClient(caCert string, insecure bool) (*http.Client, *tls.Config) {
+	if caCert != "" {
+		if rootCAs, status := loadCaCert(caCert); status == 0 {
+			config := &tls.Config{
+				InsecureSkipVerify: insecure,
+				RootCAs:            rootCAs,
+			}
+			tr := &http.Transport{TLSClientConfig: config}
+			return &http.Client{Transport: tr}, config
+		}
+	}
+	if insecure == true {
+		config := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		tr := &http.Transport{TLSClientConfig: config}
+		return &http.Client{Transport: tr}, config
+	}
+	return &http.Client{}, nil
+}
+
 // GetUsernameFromHeader returns the "user" header value
 func GetUsernameFromHeader(w http.ResponseWriter) string {
 	return w.Header().Get("user")
+}
+
+func loadCaCert(certfile string) (*x509.CertPool, int) {
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+
+	cert, err := ioutil.ReadFile(certfile)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"file": certfile,
+		}).Error("could not read certificate")
+		return &x509.CertPool{}, 1
+	}
+
+	if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
+		log.WithFields(log.Fields{
+			"file": certfile,
+		}).Error("could not append cert to cert pool")
+		return &x509.CertPool{}, 1
+	}
+
+	return rootCAs, 0
 }
 
 // ParseBody parses the passed readcloser to a string
@@ -63,17 +113,56 @@ func ParsePathString(w http.ResponseWriter, r *http.Request, key string) (string
 }
 
 // ParseQueryString parses the string value from the route and returns it
-// stats 0 -> ok || status 1 -> error
-func ParseQueryString(w http.ResponseWriter, r *http.Request, key string) (string, int) {
-	if val := r.URL.Query().Get(key); val == "" {
+// stats 0 -> ok
+// status 1 -> error
+func ParseQueryString(w http.ResponseWriter, r *http.Request, key string, optional bool) (string, int) {
+	val := r.URL.Query().Get(key)
+	if val == "" && !optional {
 		log.WithFields(log.Fields{
 			"key": key,
 		}).Warn("key was not specififed in query")
 		RespondWithError(w, http.StatusBadRequest, "key was not specified in query")
 		return val, 1
-	} else {
-		return val, 0
 	}
+	return val, 0
+}
+
+// ParseQueryBool parses the string value from the route and converts it into
+// bool. If Optional true and value not set, it defaults to false
+// 0 -> ok
+// 1 -> could not parse string
+// 2 -> could not convert to bool
+func ParseQueryBool(w http.ResponseWriter, r *http.Request, key string, optional bool) (bool, int) {
+	tmp, status := ParseQueryString(w, r, key, optional)
+	if status > 0 {
+		return false, 1
+	}
+	if tmp == "" && optional {
+		return false, 0
+	}
+	val, err := strconv.ParseBool(tmp)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"val":   tmp,
+			"error": err.Error(),
+		}).Error("could not parse value to bool")
+		RespondWithError(w, http.StatusBadRequest, "key cannot be converted to bool")
+		return false, 2
+	}
+	return val, 0
+}
+
+// ReadCookie reads the stoken cookie from the request and returns the value
+func ReadCookie(r *http.Request, title string) string {
+	cookie, err := r.Cookie(title)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"title": title,
+			"error": err.Error(),
+		}).Error("could not read cookie")
+		return ""
+	}
+	return cookie.Value
 }
 
 // RespondWithError Creates an error payload and adds the error message to be
@@ -107,6 +196,7 @@ func SendRequest(client *http.Client, method string, endpoint string, bearer str
 		log.WithFields(logfields).Error(msg)
 		return nil, 1, msg
 	}
+
 	// set content type if specified
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
@@ -116,6 +206,8 @@ func SendRequest(client *http.Client, method string, endpoint string, bearer str
 	if bearer != "" {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", bearer))
 	}
+
+	req.Close = true
 
 	res, err := client.Do(req)
 	// check if error occured during execution

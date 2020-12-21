@@ -2,23 +2,23 @@ package gateway
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/mirisbowring/primboard/helper/database"
 	_http "github.com/mirisbowring/primboard/helper/http"
+	"github.com/mirisbowring/primboard/internal/handler"
 	iModels "github.com/mirisbowring/primboard/internal/models"
 	"github.com/mirisbowring/primboard/internal/models/infrastructure"
 	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/Nerzal/gocloak/v7"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -28,12 +28,16 @@ import (
 
 // AppGateway struct to maintain database connection and router
 type AppGateway struct {
-	Router     *mux.Router
-	DB         *mongo.Database
-	Config     *infrastructure.APIGatewayConfig
-	Nodes      []models.Node // stores all authenticated nodes
-	Sessions   []*iModels.Session
-	HTTPClient *http.Client
+	Router             *mux.Router
+	DB                 *mongo.Database
+	Config             *infrastructure.APIGatewayConfig
+	Ctx                context.Context
+	Nodes              map[primitive.ObjectID]*models.Node // stores all authenticated nodes
+	Sessions           []*iModels.Session
+	HTTPClient         *http.Client
+	KeycloakClient     gocloak.GoCloak
+	KeycloakToken      *gocloak.JWT
+	KeycloakTokenCache map[string]*gocloak.RetrospecTokenResult
 }
 
 // Run starts the application on the passed address with the inherited router
@@ -116,56 +120,17 @@ func (g *AppGateway) Connect() {
 // - router initialization
 func (g *AppGateway) Initialize(config infrastructure.APIGatewayConfig) {
 	log.Info("Starting Initialization")
+	g.KeycloakTokenCache = make(map[string]*gocloak.RetrospecTokenResult)
+	g.Nodes = make(map[primitive.ObjectID]*models.Node)
 	g.Config = &config
+	g.Ctx = context.Background()
 	// load ca cert if specified
-	g.HTTPClient = generateHTTPClient(g.Config.CaCert, g.Config.TLSInsecure)
+	httpClient, tlsConfig := _http.GenerateHTTPClient(g.Config.CaCert, g.Config.TLSInsecure)
+	g.HTTPClient = httpClient
+	g.KeycloakClient = handler.CreateKeycloakClient(tlsConfig, g.Config.Keycloak.URL)
+	g.authenticateToKeycloak(0, 10)
 	g.Connect()
 	g.initializeRoutes()
-}
-
-func generateHTTPClient(caCert string, insecure bool) *http.Client {
-	if caCert != "" {
-		if rootCAs, status := loadCaCert(caCert); status == 0 {
-			config := &tls.Config{
-				InsecureSkipVerify: insecure,
-				RootCAs:            rootCAs,
-			}
-			tr := &http.Transport{TLSClientConfig: config}
-			return &http.Client{Transport: tr}
-		}
-	}
-	if insecure == true {
-		config := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		tr := &http.Transport{TLSClientConfig: config}
-		return &http.Client{Transport: tr}
-	}
-	return &http.Client{}
-}
-
-func loadCaCert(certfile string) (*x509.CertPool, int) {
-	rootCAs, _ := x509.SystemCertPool()
-	if rootCAs == nil {
-		rootCAs = x509.NewCertPool()
-	}
-
-	cert, err := ioutil.ReadFile(certfile)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"file": certfile,
-		}).Error("could not read certificate")
-		return &x509.CertPool{}, 1
-	}
-
-	if ok := rootCAs.AppendCertsFromPEM(cert); !ok {
-		log.WithFields(log.Fields{
-			"file": certfile,
-		}).Error("could not append cert to cert pool")
-		return &x509.CertPool{}, 1
-	}
-
-	return rootCAs, 0
 }
 
 // Authenticate is a middleware to pre-authenticate routes via the session token
@@ -173,20 +138,36 @@ func loadCaCert(certfile string) (*x509.CertPool, int) {
 func (g *AppGateway) Authenticate(h http.Handler, logout bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		token := g.ReadSessionCookie(&w, r)
-		s := g.GetSession(token)
-		if s != nil && s.IsValid() {
-			// set temporary user for internal processing
-			// (will be deleted in response)
-			w.Header().Set("user", s.User.Username)
-			if !logout {
-				if g.Config.SessionRotation {
-					g.SetSessionCookie(&w, r, s)
+		bearer := r.Header.Get("Authorization")
+		bearer = strings.Replace(bearer, "Bearer ", "", 1)
+		if g.keycloakTokenActive(bearer) {
+			ctx, cancel := context.WithCancel(g.Ctx)
+			defer cancel()
+			jwt, claims, err := g.KeycloakClient.DecodeAccessToken(ctx, bearer, g.Config.Keycloak.Realm, "")
+			if err == nil && jwt.Valid {
+				if val, ok := (*claims)["clientId"]; ok {
+					w.Header().Set("clientID", val.(string))
+				} else {
+					username := ""
+					if tmp, ok := (*claims)["preferred_username"]; ok {
+						username = tmp.(string)
+					}
+					// generate session
+					s := g.GetSession(bearer)
+					if s == nil {
+						s = g.prepareUsersession(username, bearer)
+						g.Sessions = append(g.Sessions, s)
+					}
+					w.Header().Set("user", username)
 				}
+				h.ServeHTTP(w, r)
+			} else {
+				g.RemoveSessionByToken(bearer)
+				_http.RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
+				return
 			}
-			h.ServeHTTP(w, r)
 		} else {
-			g.CloseSession(&w, r)
+			g.RemoveSessionByToken(bearer)
 			_http.RespondWithError(w, http.StatusUnauthorized, "Your session is invalid")
 			return
 		}
@@ -199,27 +180,151 @@ func (g *AppGateway) Authenticate(h http.Handler, logout bool) http.Handler {
 	})
 }
 
-// GetNode returns the session object for the passed token
-func (g *AppGateway) GetNode(id primitive.ObjectID) *models.Node {
-	if g.Nodes == nil || len(g.Nodes) == 0 {
-		return nil
-	}
-	for _, n := range g.Nodes {
-		if n.ID == id {
-			return &n
+// logs the client into the keycloak api and retrieves token
+func (g *AppGateway) authenticateToKeycloak(try int, max int) {
+	ctx, cancel := context.WithCancel(g.Ctx)
+	defer cancel()
+	var err error
+	g.KeycloakToken, err = g.KeycloakClient.LoginClient(ctx, g.Config.Keycloak.ClientID, g.Config.Keycloak.Secret, g.Config.Keycloak.Realm)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"clientid": g.Config.Keycloak.ClientID,
+			"realm":    g.Config.Keycloak.Realm,
+			"error":    err.Error(),
+		}).Error("could not authenticate to keycloak api")
+		// retry (possibly, keycloak not up)
+		if try < max {
+			time.Sleep(time.Second * 5)
+			g.authenticateToKeycloak(try+1, max)
 		}
 	}
-	return nil
+	g.keycloakTokenActive(g.KeycloakToken.AccessToken)
+}
+
+func (g *AppGateway) keycloakTokenActive(token string) bool {
+	// check if cached tokens expiry date is in future
+	if val, ok := g.KeycloakTokenCache[token]; ok && int64(*val.Exp) >= time.Now().Unix() {
+		log.Debug("found active token in token cache")
+		return true
+	} else if ok && int64(*val.Exp) < time.Now().Unix() {
+		// cached token expired
+		delete(g.KeycloakTokenCache, token)
+	}
+	// verify token against keycloak
+	ctx, cancel := context.WithCancel(g.Ctx)
+	defer cancel()
+	rptResult, err := g.KeycloakClient.RetrospectToken(ctx, token, g.Config.Keycloak.ClientID, g.Config.Keycloak.Secret, g.Config.Keycloak.Realm)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not retrospect token")
+		return false
+	}
+
+	// check if token active
+	if !*rptResult.Active {
+		log.Debug("token is not active according to keycloak api")
+		return false
+	}
+
+	// cache token
+	g.KeycloakTokenCache[token] = rptResult
+	return *rptResult.Active
+}
+
+func (g *AppGateway) keycloakRefreshToken() {
+	// no need to refresh if vaid
+	if g.keycloakTokenActive(g.KeycloakToken.AccessToken) {
+		log.Debug("token still valid - skipping refresh")
+		return
+	}
+
+	// verify token against keycloak
+	var err error
+	ctx, cancel := context.WithCancel(g.Ctx)
+	defer cancel()
+	g.KeycloakToken, err = g.KeycloakClient.RefreshToken(ctx, g.KeycloakToken.RefreshToken, g.Config.Keycloak.ClientID, g.Config.Keycloak.Secret, g.Config.Keycloak.Realm)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not refresh token")
+		// possibly, the refresh token is expired -> try to reauthenticate
+		g.authenticateToKeycloak(0, 1)
+		return
+	}
+
+	// map token to cache
+	g.keycloakTokenActive(g.KeycloakToken.AccessToken)
+}
+
+// prepareUsersession selects the user and prepares a local session
+func (g *AppGateway) prepareUsersession(username string, token string) *iModels.Session {
+	// verify username
+	if username == "" {
+		log.WithFields(log.Fields{
+			"username": username,
+		}).Error("username empty - cannot prepare user")
+	}
+
+	// read corresponding user from db
+	var u models.User
+	u.Username = username
+	if err := u.GetUser(g.DB); err != nil {
+		switch err {
+		case mongo.ErrNoDocuments:
+			// model not found
+			log.WithFields(log.Fields{
+				"username": username,
+				"error":    "no user found for username",
+			}).Error("could not select user from database")
+			break
+		default:
+			log.WithFields(log.Fields{
+				"username": username,
+				"error":    err.Error(),
+			}).Error("could not select user from database")
+		}
+		return &iModels.Session{}
+	}
+
+	// Create new Session
+	session := g.NewSession(u, g.DB, token)
+
+	// // select nodes, the user has access to
+	// nodes, err := models.GetAllNodes(g.DB, g.GetUserPermission(u.Username, false), "auth")
+	// if err != nil {
+	// 	log.WithFields(log.Fields{
+	// 		"username": u.Username,
+	// 		"error":    err.Error(),
+	// 	}).Error("could not retrieve nodes")
+	// 	return &iModels.Session{}
+	// }
+
+	// // // authenticate user to nodes
+	// if status, msg := handler.NodeAuthentication(session, nodes, true, g.HTTPClient); status > 0 {
+	// 	log.WithFields(log.Fields{
+	// 		"username": username,
+	// 		"error":    msg,
+	// 	}).Error("could not get nodes for user")
+	// 	return &iModels.Session{}
+	// }
+
+	return session
 }
 
 // GetUserPermission parses the permissionfilter and returns it
-func (g *AppGateway) GetUserPermission(w http.ResponseWriter, ownerOnly bool) bson.M {
-	username := _http.GetUsernameFromHeader(w)
+func (g *AppGateway) GetUserPermission(username string, ownerOnly bool) bson.M {
 	if ownerOnly {
 		return database.CreatePermissionFilter(nil, username)
 	}
 	session := g.GetSessionByUsername(username)
 	return database.CreatePermissionFilter(session.Usergroups, username)
+}
+
+// GetUserPermissionW parses the permissionfilter and returns it
+func (g *AppGateway) GetUserPermissionW(w http.ResponseWriter, ownerOnly bool) bson.M {
+	username := _http.GetUsernameFromHeader(w)
+	return g.GetUserPermission(username, ownerOnly)
 }
 
 // HashPassword hashes the passed passwort using bcrypt
@@ -289,3 +394,33 @@ func (g *AppGateway) getNodeTokenMap(w http.ResponseWriter) (map[primitive.Objec
 	}
 	return nodeMap, 0
 }
+
+// func (g *AppGateway) keycloakTokenActive(token string) bool {
+// 	// check if cached tokens expiry date is in future
+// 	if val, ok := g.KeycloakTokenCache[token]; ok && int64(*val.Exp) >= time.Now().Unix() {
+// 		log.Warn("cached token")
+// 		return true
+// 	} else if ok && int64(*val.Exp) < time.Now().Unix() {
+// 		// cached token expired
+// 		delete(g.KeycloakTokenCache, token)
+// 	}
+// 	// verify token against keycloak
+// 	ctx, cancel := context.WithCancel(g.Ctx)
+// 	defer cancel()
+// 	rptResult, err := g.KeycloakClient.RetrospectToken(ctx, token, g.Config.Keycloak.ClientID, g.Config.Keycloak.Secret, g.Config.Keycloak.Realm)
+// 	if err != nil {
+// 		log.WithFields(log.Fields{
+// 			"error": err.Error(),
+// 		}).Error("could not retrospect token")
+// 		return false
+// 	}
+
+// 	// check if token active
+// 	if !*rptResult.Active {
+// 		return false
+// 	}
+
+// 	// cache token
+// 	g.KeycloakTokenCache[token] = rptResult
+// 	return *rptResult.Active
+// }

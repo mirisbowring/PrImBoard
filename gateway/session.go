@@ -11,10 +11,10 @@ import (
 
 // NewSession initializes a new Session (if not exists) for the passed user
 // otherwise it updates the token
-func (g *AppGateway) NewSession(user models.User, db *mongo.Database) *iModels.Session {
+func (g *AppGateway) NewSession(user models.User, db *mongo.Database, token string) *iModels.Session {
 	s := g.GetSessionByUser(user)
 	s.NodeTokenMap = make(map[primitive.ObjectID]string)
-	s.RenewToken()
+	s.Token = token
 	if (s.User == models.User{} || s.User.Username == "") {
 		s.User = user
 		s.InitUserGroups(db, user.Username)
@@ -24,19 +24,19 @@ func (g *AppGateway) NewSession(user models.User, db *mongo.Database) *iModels.S
 }
 
 // CloseSession deletes the token/session pair from cache and lets the cookie expire
-func (g *AppGateway) CloseSession(w *http.ResponseWriter, r *http.Request) {
-	token := g.ReadSessionCookie(w, r)
-	g.Sessions = removeToken(g.Sessions, token)
-	cookie := http.Cookie{
-		Name:     g.Config.CookieTokenTitle,
-		MaxAge:   -1,
-		Path:     g.Config.CookiePath,
-		Secure:   g.Config.CookieSecure,
-		HttpOnly: g.Config.CookieHTTPOnly,
-		Domain:   g.Config.Domain,
-	}
-	http.SetCookie(*w, &cookie)
-}
+// func (g *AppGateway) CloseSession(w *http.ResponseWriter, r *http.Request) {
+// 	token := g.ReadSessionCookie(w, r)
+// 	g.Sessions = removeToken(g.Sessions, token)
+// 	cookie := http.Cookie{
+// 		Name:     g.Config.CookieTokenTitle,
+// 		MaxAge:   -1,
+// 		Path:     g.Config.CookiePath,
+// 		Secure:   g.Config.CookieSecure,
+// 		HttpOnly: g.Config.CookieHTTPOnly,
+// 		Domain:   g.Config.Domain,
+// 	}
+// 	http.SetCookie(*w, &cookie)
+// }
 
 // GetSessionByUser Returns the session for the passed user if exist
 func (g *AppGateway) GetSessionByUser(user models.User) *iModels.Session {
@@ -73,20 +73,20 @@ func (g *AppGateway) GetSession(token string) *iModels.Session {
 }
 
 // SetSessionCookie renews the session attributes and adds the token to the cookie
-func (g *AppGateway) SetSessionCookie(w *http.ResponseWriter, r *http.Request, session *iModels.Session) {
-	session.RenewToken()
-	cookie := http.Cookie{
-		Name:     g.Config.CookieTokenTitle,
-		Value:    session.Token,
-		Expires:  session.Expire,
-		Path:     g.Config.CookiePath,
-		Secure:   g.Config.CookieSecure,
-		HttpOnly: g.Config.CookieHTTPOnly,
-		Domain:   g.Config.CookieDomain,
-		SameSite: http.SameSite(g.Config.CookieSameSite),
-	}
-	http.SetCookie(*w, &cookie)
-}
+// func (g *AppGateway) SetSessionCookie(w *http.ResponseWriter, r *http.Request, session *iModels.Session) {
+// 	session.RenewToken()
+// 	cookie := http.Cookie{
+// 		Name:     g.Config.CookieTokenTitle,
+// 		Value:    session.Token,
+// 		Expires:  session.Expire,
+// 		Path:     g.Config.CookiePath,
+// 		Secure:   g.Config.CookieSecure,
+// 		HttpOnly: g.Config.CookieHTTPOnly,
+// 		Domain:   g.Config.CookieDomain,
+// 		SameSite: http.SameSite(g.Config.CookieSameSite),
+// 	}
+// 	http.SetCookie(*w, &cookie)
+// }
 
 // ReadSessionCookie reads the stoken cookie from the request and returns the value
 func (g *AppGateway) ReadSessionCookie(w *http.ResponseWriter, r *http.Request) string {
@@ -96,6 +96,12 @@ func (g *AppGateway) ReadSessionCookie(w *http.ResponseWriter, r *http.Request) 
 		return ""
 	}
 	return cookie.Value
+}
+
+// RemoveSessionByToken finds the session with the given token and removes it
+// from the cached session slice
+func (g *AppGateway) RemoveSessionByToken(token string) {
+	g.Sessions = removeToken(g.Sessions, token)
 }
 
 // RemoveToken finds the entry with the passed token and deletes it

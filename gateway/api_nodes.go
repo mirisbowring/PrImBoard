@@ -14,7 +14,7 @@ import (
 
 func (g *AppGateway) addGroupsToNode(w http.ResponseWriter, r *http.Request) {
 	// parse query
-	query, status := _http.ParseQueryString(w, r, "groups")
+	query, status := _http.ParseQueryString(w, r, "groups", false)
 	if status > 0 {
 		return
 	}
@@ -43,7 +43,7 @@ func (g *AppGateway) addGroupsToNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// select valid groups from database
-	groups, err := models.GetUserGroupsByIDs(g.DB, groupIDs, g.GetUserPermission(w, false))
+	groups, err := models.GetUserGroupsByIDs(g.DB, groupIDs, g.GetUserPermissionW(w, false))
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select matching groups from database")
 		return
@@ -56,7 +56,7 @@ func (g *AppGateway) addGroupsToNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	node := models.Node{ID: nodeID}
-	if err = node.AddUserGroups(g.DB, groupIDs, g.GetUserPermission(w, true)); err != nil {
+	if err = node.AddUserGroups(g.DB, groupIDs, g.GetUserPermissionW(w, true)); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not add usergroups to node")
 		return
 	}
@@ -80,7 +80,7 @@ func (g *AppGateway) AddNode(w http.ResponseWriter, r *http.Request) {
 	// settings creator
 	e.Creator = w.Header().Get("user")
 	// check mandatory fields
-	if err := e.VerifyNode(g.DB, g.GetUserPermission(w, false)); err != nil {
+	if err := e.VerifyNode(g.DB, g.GetUserPermissionW(w, false)); err != nil {
 		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -102,7 +102,7 @@ func (g *AppGateway) DeleteNodeByID(w http.ResponseWriter, r *http.Request) {
 	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	e := models.Node{ID: id}
-	if err := e.GetNode(g.DB, g.GetUserPermission(w, true), false); err != nil {
+	if err := e.GetNode(g.DB, g.GetUserPermissionW(w, true), false); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not verify node id")
 		return
 	}
@@ -123,7 +123,7 @@ func (g *AppGateway) DeleteNodeByID(w http.ResponseWriter, r *http.Request) {
 
 // GetNodes handles the webrequest for receiving all nodes
 func (g *AppGateway) GetNodes(w http.ResponseWriter, r *http.Request) {
-	es, err := models.GetAllNodes(g.DB, g.GetUserPermission(w, false), "")
+	es, err := models.GetAllNodes(g.DB, g.GetUserPermissionW(w, false), "")
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -139,7 +139,7 @@ func (g *AppGateway) GetNodeByID(w http.ResponseWriter, r *http.Request) {
 	// create model by passed id
 	e := models.Node{ID: id}
 	// try to select user
-	if err := e.GetNode(g.DB, g.GetUserPermission(w, false), false); err != nil {
+	if err := e.GetNode(g.DB, g.GetUserPermissionW(w, false), false); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -169,19 +169,19 @@ func (g *AppGateway) UpdateNodeByID(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 	// verify the correctness of the update
-	if err := ue.VerifyNode(g.DB, g.GetUserPermission(w, false)); err != nil {
+	if err := ue.VerifyNode(g.DB, g.GetUserPermissionW(w, false)); err != nil {
 		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	// trying to update model with requested body
 	e := models.Node{ID: id}
-	_, err := e.UpdateNode(g.DB, ue, g.GetUserPermission(w, true))
+	_, err := e.UpdateNode(g.DB, ue, g.GetUserPermissionW(w, true))
 	if err != nil {
 		// Error occured during update
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err = e.GetNode(g.DB, g.GetUserPermission(w, false), false); err != nil {
+	if err = e.GetNode(g.DB, g.GetUserPermissionW(w, false), false); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

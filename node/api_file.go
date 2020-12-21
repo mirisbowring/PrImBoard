@@ -1,10 +1,16 @@
 package node
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 
+	"github.com/mirisbowring/primboard/helper"
 	_http "github.com/mirisbowring/primboard/helper/http"
 	"github.com/mirisbowring/primboard/internal/handler"
+	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,11 +47,11 @@ func (n *AppNode) addFile(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// create original
-	if status := handler.CreateFile(n.Config.BasePath, file, handlerOrigin, username, "original", w); status > 0 {
+	if status := handler.CreateFileFromMultipart(n.Config.BasePath, file, handlerOrigin, username, "original", w); status > 0 {
 		return
 	}
 	// create thumbnail
-	if status := handler.CreateFile(n.Config.BasePath, fileThumb, handlerThumb, username, "thumb", w); status > 0 {
+	if status := handler.CreateFileFromMultipart(n.Config.BasePath, fileThumb, handlerThumb, username, "thumb", w); status > 0 {
 		return
 	}
 
@@ -129,6 +135,41 @@ func (n *AppNode) deleteShares(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (n *AppNode) getFile(w http.ResponseWriter, r *http.Request) {
+	// parse identifier
+	ident, status := _http.ParsePathString(w, r, "identifier")
+	if status > 0 {
+		return
+	}
+
+	// parse filename
+	file, status := _http.ParsePathString(w, r, "filename")
+	if status > 0 {
+		return
+	}
+
+	// parse optional group query
+	group, status := _http.ParseQueryBool(w, r, "group", true)
+	if status > 0 {
+		return
+	}
+
+	// parse optional thumb query
+	thumb, status := _http.ParseQueryBool(w, r, "thumb", true)
+	if status > 0 {
+		return
+	}
+
+	var path string
+	if group {
+		path = n.getDataPath(ident, pathTypeGroup, thumb)
+	} else {
+		path = n.getDataPath(ident, pathTypeUser, thumb)
+	}
+	path = fmt.Sprintf("%s/%s", path, file)
+	http.ServeFile(w, r, path)
+}
+
 func (n *AppNode) shareFiles(w http.ResponseWriter, r *http.Request) {
 	// parse username from url
 	username, status := _http.ParsePathString(w, r, "username")
@@ -149,4 +190,128 @@ func (n *AppNode) shareFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_http.RespondWithJSON(w, http.StatusCreated, "shared files successfully")
+}
+
+func (n *AppNode) uploadFile(w http.ResponseWriter, r *http.Request) {
+	username := _http.GetUsernameFromHeader(w)
+
+	// grep filemeta
+	meta := r.FormValue("filemeta")
+	m := models.Media{}
+	if err := json.Unmarshal([]byte(meta), &m); err != nil {
+		_http.RespondWithError(w, http.StatusBadRequest, "could not unmarshal passed filemeta")
+		return
+	}
+
+	// receive file
+	file, fileHeader, err := r.FormFile("uploadfile")
+	if err != nil {
+		_http.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	defer file.Close()
+
+	// set the username
+	m.Creator = username
+
+	// verify dir existance
+	path := n.getDataPath(m.Creator, pathTypeUser, false)
+	pathThumb := n.getDataPath(m.Creator, pathTypeUser, true)
+	_ = os.Mkdir(path, os.ModePerm)
+	_ = os.Mkdir(pathThumb, os.ModePerm)
+
+	// Create file
+	filepath := fmt.Sprintf("%s%s", path, fileHeader.Filename)
+	if status := handler.CreateFile(filepath, file); status > 0 {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could create file")
+		return
+	}
+
+	// create new stream
+	file, err = os.Open(filepath)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"filepath": filepath,
+			"error":    err.Error(),
+		}).Error("could not open file")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not open file to calculate checksum")
+		return
+	}
+
+	// generate hash
+	if m.Sha1 = helper.GenerateSHA1(file); m.Sha1 == "" {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not calculate checksum for file")
+		return
+	}
+
+	// parse filenames
+	m.FileNameThumb = handler.ParseFileName(m.Sha1, m.Creator, true, m.Extension)
+	m.FileName = handler.ParseFileName(m.Sha1, m.Creator, false, m.Extension)
+
+	// rename tmp original to naming standard
+	if err := os.Rename(filepath, fmt.Sprintf("%s%s", path, m.FileName)); err != nil {
+		log.WithFields(log.Fields{
+			"old":   filepath,
+			"new":   fmt.Sprintf("%s%s", path, m.FileName),
+			"error": err.Error(),
+		}).Error("could not rename file to match standard")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not finish file")
+		return
+	}
+
+	// create thumbanil
+	rt := handler.CreateThumbnail(fmt.Sprintf("%s%s", path, m.FileName))
+	if rt == nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not render thumbnail")
+		return
+	}
+	filepath = fmt.Sprintf("%s%s", pathThumb, m.FileNameThumb)
+	if status := handler.CreateFile(filepath, rt); status > 0 {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could create thumbnail file")
+		return
+	}
+
+	// parse media to json
+	data, err := json.Marshal(m)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"media": m,
+			"error": err.Error(),
+		}).Error("could not marshal media to json")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not marshal media to json")
+		return
+	}
+
+	// create reader from json bytes
+	body := bytes.NewReader(data)
+
+	log.Warn(string(data))
+
+	// refresh keycloaktoken in neccessary
+	n.keycloakRefreshToken()
+
+	// post media to gateway
+	_http.SendRequest(n.HTTPClient, http.MethodPost, n.Config.GatewayURL+"/api/v1/media", n.KeycloakToken.AccessToken, body, "application/json")
+
+	// file to specified node
+	// m, err = addMediaToNode(filename, m, n, g.HTTPClient)
+	// if err != nil {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, "could not push media to node")
+	// 	return
+	// }
+	// m, err = addMediaToIpfsNode(filename, m, n)
+	// if err != nil {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	// 	return
+	// }
+
+	// try to insert model into db
+	// result, err := m.AddMedia(g.DB)
+	// if err != nil {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	// 	return
+	// }
+
+	// creation successful
+	// _http.RespondWithJSON(w, http.StatusCreated, result)
 }

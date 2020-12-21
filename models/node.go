@@ -23,10 +23,10 @@ type Node struct {
 	Secret       string               `json:"secret,omitempty" bson:"secret,omitempty"`
 	APIEndpoint  string               `json:"APIEndpoint,omitempty" bson:"APIEndpoint,omitempty"`
 	DataEndpoint string               `json:"dataEndpoint,omitempty" bson:"dataEndpoint,omitempty"`
-	UserSession  string               `json:"userSession,omitempty" bson:"-"`
-	Groups       []UserGroup          `json:"groups,omitempty" bson:"-"`
-	Users        []User               `json:"users,omitempty" bson:"-"`
-	Usernames    []string             `json:"usernames,omitempty" bson:"-"`
+	// UserSession  string               `json:"userSession,omitempty" bson:"-"`
+	Groups    []UserGroup `json:"groups,omitempty" bson:"-"`
+	Users     []User      `json:"users,omitempty" bson:"-"`
+	Usernames []string    `json:"usernames,omitempty" bson:"-"`
 }
 
 // NodeProject is a bson representation of the ipfs-node setting object

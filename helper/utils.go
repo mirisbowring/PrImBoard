@@ -44,20 +44,19 @@ func FindInSlice(slice []string, val string) (int, bool) {
 }
 
 // GenerateSHA1 generates a sha1 hash for the specified reader
-func GenerateSHA1(reader io.Reader) (string, error) {
+func GenerateSHA1(reader io.Reader) string {
 	var _hash string
 	hash := sha1.New()
 	if _, err := io.Copy(hash, reader); err != nil {
 		log.WithFields(log.Fields{
 			"hash":  "sha1",
-			"path":  "thumbnail",
 			"error": err.Error(),
 		}).Error("could not create hash")
-		return _hash, err
+		return _hash
 	}
 	hashInBytes := hash.Sum(nil)[:20]
 	_hash = hex.EncodeToString(hashInBytes)
-	return _hash, nil
+	return _hash
 }
 
 // GenerateRandomToken generates a token of the specified length

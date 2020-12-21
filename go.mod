@@ -1,6 +1,7 @@
 module github.com/mirisbowring/primboard
 
 require (
+	github.com/Nerzal/gocloak/v7 v7.11.0
 	github.com/bakape/thumbnailer/v2 v2.6.4
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0

@@ -1,4 +1,4 @@
-package session
+package handler
 
 import (
 	iModels "github.com/mirisbowring/primboard/internal/models"

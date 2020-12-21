@@ -84,6 +84,11 @@ func ParseGatewayEnv() infrastructure.Config {
 			"error": err.Error(),
 		}).Error("could not parse env")
 	}
+	tmp.APIGatewayConfig.Keycloak = &infrastructure.KeycloakConfig{}
+	tmp.APIGatewayConfig.Keycloak.URL = os.Getenv("KEYCLOAK_URL")
+	tmp.APIGatewayConfig.Keycloak.Realm = os.Getenv("KEYCLOAK_REALM")
+	tmp.APIGatewayConfig.Keycloak.ClientID = os.Getenv("KEYCLOAK_CLIENT_ID")
+	tmp.APIGatewayConfig.Keycloak.Secret = os.Getenv("KEYCLOAK_SECRET")
 	tmp.APIGatewayConfig.MongoURL = os.Getenv("MONGO_URL")
 	tmp.APIGatewayConfig.Port, err = strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
@@ -128,8 +133,15 @@ func ParseNodeEnv() infrastructure.Config {
 
 	tmp.NodeConfig.AllowedOrigins = strings.Split(os.Getenv("ALLOWED_ORIGINS"), ";")
 	tmp.NodeConfig.BasePath = os.Getenv("BASEPATH")
+	tmp.NodeConfig.Certificates = os.Getenv("CERTIFICATES")
+	tmp.NodeConfig.CaCert = os.Getenv("CA_CERT")
 	tmp.NodeConfig.TargetPath = os.Getenv("TARGETPATH")
 	tmp.NodeConfig.GatewayURL = os.Getenv("GATEWAY_URL")
+	tmp.NodeConfig.Keycloak = &infrastructure.KeycloakConfig{}
+	tmp.NodeConfig.Keycloak.URL = os.Getenv("KEYCLOAK_URL")
+	tmp.NodeConfig.Keycloak.Realm = os.Getenv("KEYCLOAK_REALM")
+	tmp.NodeConfig.Keycloak.ClientID = os.Getenv("KEYCLOAK_CLIENT_ID")
+	tmp.NodeConfig.Keycloak.Secret = os.Getenv("KEYCLOAK_SECRET")
 	tmp.NodeConfig.NodeAuth = &infrastructure.NodeAuth{}
 	tmp.NodeConfig.NodeAuth.ID = os.Getenv("NODE_AUTH_ID")
 	tmp.NodeConfig.NodeAuth.Secret = os.Getenv("NODE_AUTH_SECRET")
@@ -140,6 +152,15 @@ func ParseNodeEnv() infrastructure.Config {
 			"value": os.Getenv("PORT"),
 			"error": err.Error(),
 		}).Error("could not parse env")
+	}
+	tmp.NodeConfig.TLSInsecure, err = strconv.ParseBool(os.Getenv("TLS_INSECURE"))
+	if err != nil {
+		log.WithFields(log.Fields{
+			"env":   "TLS_INSECURE",
+			"value": os.Getenv("TLS_INSECURE"),
+			"error": err.Error(),
+		}).Error("could not parse env")
+		tmp.NodeConfig.TLSInsecure = false
 	}
 
 	return tmp

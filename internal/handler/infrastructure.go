@@ -1,16 +1,29 @@
-package infrastructure
+package handler
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/Nerzal/gocloak/v7"
 	"github.com/mirisbowring/primboard/helper"
 	_http "github.com/mirisbowring/primboard/helper/http"
 	iModels "github.com/mirisbowring/primboard/internal/models"
 	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
 )
+
+// CreateKeycloakClient parses a tls.Config (if passed) and authenticates to
+// the passed keycloak api
+func CreateKeycloakClient(config *tls.Config, keycloakURL string) gocloak.GoCloak {
+	log.Info("authenticating to keycloak")
+	client := gocloak.NewClient(keycloakURL)
+	if config != nil {
+		client.RestyClient().SetTLSClientConfig(config)
+	}
+	return client
+}
 
 // NodeAuthentication can be called by the server to authenticate or
 // unauthenticate a user from a node.
@@ -75,7 +88,7 @@ func NodeAuthentication(session *iModels.Session, nodes []models.Node, authentic
 			break
 		case http.StatusNotFound:
 			msg = "node not found"
-			log.WithFields(logfields).Error("could not fond node")
+			log.WithFields(logfields).Error("could not find node")
 			continue
 		default:
 			msg = "unexpected response"

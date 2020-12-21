@@ -325,7 +325,7 @@ func (m *Media) DeleteMedia(db *mongo.Database) (*mongo.DeleteResult, error) {
 }
 
 // GetMediaPage returns the requested page after a specific id
-func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M, nodeMap map[primitive.ObjectID]string) ([]Media, error) {
+func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Media, error) {
 	// verify that query combination is able to be filtered
 	if err := query.IsValid(); err != nil {
 		return nil, err
@@ -396,7 +396,7 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M, nodeM
 	defer conn.Cancel()
 	cursor, err := conn.Col.Aggregate(conn.Ctx, pipeline, opts)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return media, err
 	}
 
@@ -405,11 +405,6 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M, nodeM
 	for cursor.Next(conn.Ctx) {
 		var m Media
 		cursor.Decode(&m)
-		if m.Nodes != nil && len(m.Nodes) > 0 {
-			for i, node := range m.Nodes {
-				m.Nodes[i].UserSession = nodeMap[node.ID]
-			}
-		}
 		media = append(media, m)
 	}
 	return media, nil
@@ -444,7 +439,7 @@ func GetAllMedia(db *mongo.Database) ([]Media, error) {
 }
 
 // GetMedia returns the specified entry from the mongodb
-func (m *Media) GetMedia(db *mongo.Database, permission bson.M, nodeMap map[primitive.ObjectID]string) error {
+func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 	if permission == nil {
 		return errors.New("no permissions specified")
 	}
@@ -493,11 +488,6 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M, nodeMap map[prim
 		err := cursor.Decode(&m)
 		if err != nil {
 			return err
-		}
-		if m.Nodes != nil && len(m.Nodes) > 0 {
-			for i, node := range m.Nodes {
-				m.Nodes[i].UserSession = nodeMap[node.ID]
-			}
 		}
 		found = true
 		break
