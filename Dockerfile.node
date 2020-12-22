@@ -11,7 +11,7 @@ ENV PKG_CONFIG_PATH=$HOME/ffmpeg_build/lib/pkgconfig
 
 WORKDIR /src
 
-COPY go.* .
+COPY go.* ./
 
 RUN go mod download
 
