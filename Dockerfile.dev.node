@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.0-experimental
+
 FROM jrottenberg/ffmpeg:4.1-alpine AS base
 
 COPY --from=golang:1.15.5-alpine /usr/local/go/ /usr/local/go/
@@ -13,23 +15,24 @@ WORKDIR /src
 
 COPY go.* .
 
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 FROM base AS build
 
 ARG TARGETOS
 ARG TARGETARCH
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /gateway-api cmd/primboard-api/main.go
+RUN --mount=target=. \
+    --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /node-api cmd/primboard-api-node/main.go
 
-# RUN go build -o /gateway-api cmd/primboard-api/main.go
-RUN chmod +x /gateway-api
+RUN chmod +x /node-api
 
 FROM jrottenberg/ffmpeg:4.1-alpine AS run
 
-COPY --from=build /gateway-api .
+COPY --from=build /node-api .
 
-EXPOSE 8765
-
+EXPOSE 8766
 ENTRYPOINT [ "/usr/bin/env" ]
-
-CMD [ "/gateway-api", "-env" ]
+CMD [ "/node-api", "-env" ]

@@ -28,17 +28,10 @@ services:
         depends_on:
             # - node
             - gateway
-        build:
-            dockerfile: Dockerfile.nginx
-            context: .
-            target: "${COMPOSE_TARGET}"
+        image: nginx:1.19.4-alpine
         volumes:
             - ${PWD}/utils/nginx.conf:/etc/nginx/nginx.conf:rw
-            - ${PWD}/utils/10-incron-watch:/etc/incron.d/10-incron-watch:ro
             - /Users/arlindne/primboard/letsencrypt/:/etc/letsencrypt/:ro
-            - /Users/arlindne/primboard/node/data:/data:ro
-            - /Users/arlindne/primboard/node/etc/nginx/locations:/etc/nginx/locations:rw
-            - /Users/arlindne/primboard/node/etc/nginx/cache/:/etc/nginx/cache:rw
             - /Users/arlindne/primboard/node/etc/nginx/logs:/etc/nginx/logs:rw
         environment: 
             - proxy-address-forwarding=true

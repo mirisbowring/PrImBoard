@@ -387,7 +387,8 @@ func GetMediaPage(db *mongo.Database, query MediaQuery, permission bson.M) ([]Me
 			"foreignField": "_id",
 			"as":           "nodes",
 		}},
-		{"$project": MediaListProject},
+		// {"$project": MediaListProject},
+		{"$project": MediaProject},
 	}
 
 	var media []Media
