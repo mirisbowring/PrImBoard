@@ -199,10 +199,10 @@ func (ug *UserGroup) Verify(db *mongo.Database) error {
 		return errors.New("the title is not set")
 	}
 	// verify creator
-	u := User{Username: ug.Creator}
-	if !u.Exists(db) {
-		return errors.New("the creator does not exist")
-	}
+	// u := User{Username: ug.Creator}
+	// if !u.Exists(db) {
+	// 	return errors.New("the creator does not exist")
+	// }
 	// verify that creator is in group
 	if _, found := helper.FindInSlice(ug.Users, ug.Creator); !found {
 		ug.Users = append(ug.Users, ug.Creator)

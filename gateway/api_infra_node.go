@@ -97,7 +97,7 @@ func (g *AppGateway) syncUserAuthentication(node models.Node) {
 		status, msg := handler.NodeAuthentication(session, []models.Node{node}, true, g.HTTPClient)
 		if status > 0 {
 			log.WithFields(log.Fields{
-				"username": session.User.Username,
+				"username": session.User,
 				"node":     node.ID,
 				"error":    msg,
 			}).Error("could not authenticate user")

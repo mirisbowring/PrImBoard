@@ -4,20 +4,19 @@ import (
 	"net/http"
 
 	iModels "github.com/mirisbowring/primboard/internal/models"
-	"github.com/mirisbowring/primboard/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // NewSession initializes a new Session (if not exists) for the passed user
 // otherwise it updates the token
-func (g *AppGateway) NewSession(user models.User, db *mongo.Database, token string) *iModels.Session {
+func (g *AppGateway) NewSession(user string, db *mongo.Database, token string) *iModels.Session {
 	s := g.GetSessionByUser(user)
 	s.NodeTokenMap = make(map[primitive.ObjectID]string)
 	s.Token = token
-	if (s.User == models.User{} || s.User.Username == "") {
+	if s.User == "" {
 		s.User = user
-		s.InitUserGroups(db, user.Username)
+		s.InitUserGroups(db, user)
 		g.Sessions = append(g.Sessions, s)
 	}
 	return s
@@ -39,12 +38,12 @@ func (g *AppGateway) NewSession(user models.User, db *mongo.Database, token stri
 // }
 
 // GetSessionByUser Returns the session for the passed user if exist
-func (g *AppGateway) GetSessionByUser(user models.User) *iModels.Session {
+func (g *AppGateway) GetSessionByUser(user string) *iModels.Session {
 	// skip iteration if passed argument is invalid
-	if (user == models.User{} || user.Username == "") {
+	if user == "" {
 		return new(iModels.Session)
 	}
-	return g.GetSessionByUsername(user.Username)
+	return g.GetSessionByUsername(user)
 }
 
 // GetSessionByUsername returns the session for the passed username if exist
@@ -55,7 +54,7 @@ func (g *AppGateway) GetSessionByUsername(user string) *iModels.Session {
 	}
 	// iterate over cached sessions
 	for _, v := range g.Sessions {
-		if (v.User != models.User{} && v.User.Username == user) {
+		if v.User == user && v.User != "" {
 			return v
 		}
 	}

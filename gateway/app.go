@@ -266,29 +266,29 @@ func (g *AppGateway) prepareUsersession(username string, token string) *iModels.
 		}).Error("username empty - cannot prepare user")
 	}
 
-	// read corresponding user from db
-	var u models.User
-	u.Username = username
-	if err := u.GetUser(g.DB); err != nil {
-		switch err {
-		case mongo.ErrNoDocuments:
-			// model not found
-			log.WithFields(log.Fields{
-				"username": username,
-				"error":    "no user found for username",
-			}).Error("could not select user from database")
-			break
-		default:
-			log.WithFields(log.Fields{
-				"username": username,
-				"error":    err.Error(),
-			}).Error("could not select user from database")
-		}
-		return &iModels.Session{}
-	}
+	// // read corresponding user from db
+	// var u models.User
+	// u.Username = username
+	// if err := u.GetUser(g.DB); err != nil {
+	// 	switch err {
+	// 	case mongo.ErrNoDocuments:
+	// 		// model not found
+	// 		log.WithFields(log.Fields{
+	// 			"username": username,
+	// 			"error":    "no user found for username",
+	// 		}).Error("could not select user from database")
+	// 		break
+	// 	default:
+	// 		log.WithFields(log.Fields{
+	// 			"username": username,
+	// 			"error":    err.Error(),
+	// 		}).Error("could not select user from database")
+	// 	}
+	// 	return &iModels.Session{}
+	// }
 
 	// Create new Session
-	session := g.NewSession(u, g.DB, token)
+	session := g.NewSession(username, g.DB, token)
 
 	// // select nodes, the user has access to
 	// nodes, err := models.GetAllNodes(g.DB, g.GetUserPermission(u.Username, false), "auth")

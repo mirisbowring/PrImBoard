@@ -28,7 +28,7 @@ func CreateKeycloakClient(config *tls.Config, keycloakURL string) gocloak.GoCloa
 // NodeAuthentication can be called by the server to authenticate or
 // unauthenticate a user from a node.
 func NodeAuthentication(session *iModels.Session, nodes []models.Node, authenticate bool, client *http.Client) (int, string) {
-	username := session.User.Username
+	username := session.User
 
 	// verify that nodes have been passed
 	if nodes == nil || len(nodes) == 0 {

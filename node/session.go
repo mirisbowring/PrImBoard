@@ -2,7 +2,6 @@ package node
 
 import (
 	iModels "github.com/mirisbowring/primboard/internal/models"
-	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,7 +24,7 @@ func (n *AppNode) AddSession(username string, token string) (int, string) {
 		tmp := n.Sessions[:0]
 		for _, session := range n.Sessions {
 			// match found ?
-			if session.User.Username == username {
+			if session.User == username {
 				// refresh token
 				session.Token = token
 				return 0, ""
@@ -43,7 +42,7 @@ func (n *AppNode) AddSession(username string, token string) (int, string) {
 		n.Sessions = iModels.RemoveEmptySessions(n.Sessions)
 		// append new session if did not exist before
 		n.Sessions = append(n.Sessions, &iModels.Session{
-			User:  models.User{Username: username},
+			User:  username,
 			Token: token,
 		})
 		return 0, ""

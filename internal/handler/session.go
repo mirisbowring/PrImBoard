@@ -2,16 +2,15 @@ package handler
 
 import (
 	iModels "github.com/mirisbowring/primboard/internal/models"
-	"github.com/mirisbowring/primboard/models"
 )
 
 // GetSessionByUser Returns the session for the passed user if exist
-func GetSessionByUser(sessions []*iModels.Session, user models.User) *iModels.Session {
+func GetSessionByUser(sessions []*iModels.Session, user string) *iModels.Session {
 	// skip iteration if passed argument is invalid
-	if (user == models.User{} || user.Username == "") {
+	if user == "" {
 		return new(iModels.Session)
 	}
-	return GetSessionByUsername(sessions, user.Username)
+	return GetSessionByUsername(sessions, user)
 }
 
 // GetSessionByUsername returns the session for the passed username if exist
@@ -22,7 +21,7 @@ func GetSessionByUsername(sessions []*iModels.Session, username string) *iModels
 	}
 	// iterate over cached sessions
 	for _, v := range sessions {
-		if (v.User != models.User{} && v.User.Username == username) {
+		if v.User == username && v.User != "" {
 			return v
 		}
 	}

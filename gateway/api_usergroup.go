@@ -40,18 +40,17 @@ func (g *AppGateway) AddUserGroup(w http.ResponseWriter, r *http.Request) {
 
 // AddUserToUserGroupByID adds a User to the specified usergroup
 func (g *AppGateway) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	var u models.User
 	// decode
-	u, status := DecodeUserRequest(w, r, u)
+	u, status := _http.ParsePathString(w, r, "username")
 	if status != 0 {
 		return
 	}
-	// check if user does Exists
-	if !u.Exists(g.DB) {
-		// user does not exist
-		_http.RespondWithError(w, http.StatusBadRequest, "Could not add user!")
-		return
-	}
+	// // check if user does Exists
+	// if !u.Exists(g.DB) {
+	// 	// user does not exist
+	// 	_http.RespondWithError(w, http.StatusBadRequest, "Could not add user!")
+	// 	return
+	// }
 
 	// parse ID from route
 	id := parseID(w, r)
@@ -66,19 +65,19 @@ func (g *AppGateway) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Reque
 	}
 
 	// verify that user is owner
-	if w.Header().Get("user") != ug.Creator {
+	if _http.GetUsernameFromHeader(w) != ug.Creator {
 		_http.RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
 		return
 	}
 
 	// check if user already in group
-	if _, found := helper.FindInSlice(ug.Users, u.Username); found {
+	if _, found := helper.FindInSlice(ug.Users, u); found {
 		_http.RespondWithError(w, http.StatusFound, "User already added to usergroup!")
 		return
 	}
 
 	//append user and save object to db
-	ug.Users = append(ug.Users, u.Username)
+	ug.Users = append(ug.Users, u)
 	//skipVerify because we manually added a single username and checked uniqueness
 	if err := ug.Save(g.DB, true); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -90,18 +89,18 @@ func (g *AppGateway) AddUserToUserGroupByID(w http.ResponseWriter, r *http.Reque
 
 // AddUsersToUserGroupByID adds a User to the specified usergroup
 func (g *AppGateway) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	var u []models.User
+	var u []string
 	// decode
-	u, status := DecodeUsersRequest(w, r, u)
+	u, status := DecodeStringsRequest(w, r, u)
 	if status != 0 {
 		return
 	}
 	// select all existing users from db that matches the given array
-	u, err := models.GetUsers(g.DB, u)
-	if err != nil {
-		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
+	// u, err := models.GetUsers(g.DB, u)
+	// if err != nil {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	// 	return
+	// }
 	// verify, that any user was selected
 	if len(u) == 0 {
 		_http.RespondWithError(w, http.StatusBadRequest, "No valid users specified!")
@@ -121,14 +120,14 @@ func (g *AppGateway) AddUsersToUserGroupByID(w http.ResponseWriter, r *http.Requ
 	}
 
 	// verify that user is owner
-	if w.Header().Get("user") != ug.Creator {
+	if _http.GetUsernameFromHeader(w) != ug.Creator {
 		_http.RespondWithError(w, http.StatusUnauthorized, "You do not own this group!")
 		return
 	}
 
 	// check adding all users and make slice unique
 	for _, user := range u {
-		ug.Users = append(ug.Users, user.Username)
+		ug.Users = append(ug.Users, user)
 	}
 	ug.Users = helper.UniqueStrings(ug.Users)
 
@@ -179,7 +178,7 @@ func (g *AppGateway) GetUserGroupByID(w http.ResponseWriter, r *http.Request) {
 // GetUserGroups returns all groups, the current user is assigned to
 func (g *AppGateway) GetUserGroups(w http.ResponseWriter, r *http.Request) {
 	// receive current user
-	username := w.Header().Get("user")
+	username := _http.GetUsernameFromHeader(w)
 	// read groups from db
 	groups, err := models.GetUserGroups(g.DB, username)
 	if err != nil {
@@ -205,8 +204,6 @@ func (g *AppGateway) GetUserGroupsByName(w http.ResponseWriter, r *http.Request)
 
 // RemoveUserFromUserGroupByID adds a User to the specified usergroup
 func (g *AppGateway) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	var u models.User
-
 	// parse ID from route
 	id := parseID(w, r)
 	if id.IsZero() {
@@ -218,8 +215,6 @@ func (g *AppGateway) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.
 	if status != 0 {
 		return
 	}
-	u.Username = username
-
 	// init usergroup
 	ug := models.UserGroup{ID: id}
 	if g.GetUserGroupAPI(w, g.DB, &ug) != 0 {
@@ -227,7 +222,7 @@ func (g *AppGateway) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.
 	}
 
 	// remove username from slice
-	ug.Users = RemoveString(ug.Users, u.Username)
+	ug.Users = RemoveString(ug.Users, username)
 
 	if err := ug.Save(g.DB, false); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
@@ -240,9 +235,9 @@ func (g *AppGateway) RemoveUserFromUserGroupByID(w http.ResponseWriter, r *http.
 
 // RemoveUsersFromUserGroupByID adds a User to the specified usergroup
 func (g *AppGateway) RemoveUsersFromUserGroupByID(w http.ResponseWriter, r *http.Request) {
-	var u []models.User
+	var u []string
 	// decode
-	u, status := DecodeUsersRequest(w, r, u)
+	u, status := DecodeStringsRequest(w, r, u)
 	if status != 0 {
 		return
 	}
@@ -261,7 +256,7 @@ func (g *AppGateway) RemoveUsersFromUserGroupByID(w http.ResponseWriter, r *http
 
 	// remove usernames from slice
 	for _, user := range u {
-		ug.Users = RemoveString(ug.Users, user.Username)
+		ug.Users = RemoveString(ug.Users, user)
 	}
 
 	if err := ug.Save(g.DB, false); err != nil {

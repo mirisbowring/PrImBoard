@@ -25,7 +25,7 @@ type Node struct {
 	DataEndpoint string               `json:"dataEndpoint,omitempty" bson:"dataEndpoint,omitempty"`
 	// UserSession  string               `json:"userSession,omitempty" bson:"-"`
 	Groups    []UserGroup `json:"groups,omitempty" bson:"-"`
-	Users     []User      `json:"users,omitempty" bson:"-"`
+	Users     []string    `json:"users,omitempty" bson:"-"`
 	Usernames []string    `json:"usernames,omitempty" bson:"-"`
 }
 
@@ -49,13 +49,13 @@ var NodeProjectInternal = bson.M{
 	"type":         1,
 	"APIEndpoint":  1,
 	"dataEndpoint": 1,
-	"users":        UserProject,
+	"users":        1,
 }
 
 var NodeProjectUserReduction = bson.M{
-	"usernames": bson.M{
+	"users": bson.M{
 		"$reduce": bson.M{
-			"input":        "$usernames",
+			"input":        "$users",
 			"initialValue": bson.A{"$creator"},
 			"in": bson.M{
 				"$setUnion": bson.A{
@@ -247,7 +247,7 @@ func (n *Node) GetNode(db *mongo.Database, permission bson.M, internal bool) err
 	return nil
 }
 
-func (n *Node) GetUser(db *mongo.Database) ([]User, int) {
+func (n *Node) GetUser(db *mongo.Database) ([]string, int) {
 	pipeline := []bson.M{
 		{"$match": bson.M{"_id": n.ID}},
 		{"$lookup": bson.M{
@@ -256,14 +256,14 @@ func (n *Node) GetUser(db *mongo.Database) ([]User, int) {
 			"foreignField": "_id",
 			"as":           "groups",
 		}},
-		{"$addFields": bson.M{"usernames": "$groups.users"}},
+		{"$addFields": bson.M{"users": "$groups.users"}},
 		{"$project": NodeProjectUserReduction},
-		{"$lookup": bson.M{
-			"from":         "user",
-			"localField":   "usernames",
-			"foreignField": "username",
-			"as":           "users",
-		}},
+		// {"$lookup": bson.M{
+		// 	"from":         "user",
+		// 	"localField":   "usernames",
+		// 	"foreignField": "username",
+		// 	"as":           "users",
+		// }},
 		{"$project": NodeProject},
 	}
 

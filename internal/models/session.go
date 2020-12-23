@@ -12,7 +12,7 @@ import (
 // Session stores the user data, the token, the expiration of the session and
 // the usergroups of the current user
 type Session struct {
-	User         models.User
+	User         string
 	Token        string
 	Expire       time.Time
 	Usergroups   []primitive.ObjectID
@@ -35,7 +35,7 @@ func (s *Session) InitUserGroups(db *mongo.Database, user string) {
 // IsValid returns whether the current session is valid or not
 // Username and Token must exist and should not be expired
 func (s *Session) IsValid() bool {
-	if (s.User == models.User{} || s.User.Username == "" || s.Token == "") {
+	if s.User == "" || s.Token == "" {
 		return false
 	}
 	return s.Expire.Sub(time.Now()).Seconds() > 0

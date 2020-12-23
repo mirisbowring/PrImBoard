@@ -36,9 +36,9 @@ type Media struct {
 	ContentType     string               `json:"contentType,omitempty" bson:"contentType,omitempty"`
 	Tags            []string             `json:"tags,omitempty" bson:"tags,omitempty"`
 	NodeIDs         []primitive.ObjectID `json:"nodeIDs,omitempty" bson:"nodeIDs,omitempty"`
-	Users           []User               `json:"users,omitempty"`
-	Groups          []UserGroup          `json:"groups,omitempty"`
-	Nodes           []Node               `json:"nodes,omitempty"`
+	// Users           []string             `json:"users,omitempty"`
+	Groups []UserGroup `json:"groups,omitempty"`
+	Nodes  []Node      `json:"nodes,omitempty"`
 }
 
 // MediaEventMap is used to map an array of events to an array of media
@@ -72,9 +72,9 @@ var MediaProject = bson.M{
 	"extension":       1,
 	"contentType":     1,
 	"tags":            1,
-	"users":           UserProject,
-	"groups":          UserGroupProject,
-	"nodes":           NodeProject,
+	// "users":           1,
+	"groups": UserGroupProject,
+	"nodes":  NodeProject,
 }
 
 // MediaListProject is a bson representaion of the $project aggregation for mongodb
@@ -451,12 +451,12 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 	// filter := bson.M{"_id": m.ID}
 	pipeline := []bson.M{
 		{"$match": filter},
-		{"$lookup": bson.M{
-			"from":         "user",
-			"localField":   "comments.username",
-			"foreignField": "username",
-			"as":           "users",
-		}},
+		// {"$lookup": bson.M{
+		// 	"from":         "user",
+		// 	"localField":   "comments.username",
+		// 	"foreignField": "username",
+		// 	"as":           "users",
+		// }},
 		{"$lookup": bson.M{
 			"from":         "usergroup",
 			"localField":   "groupIDs",

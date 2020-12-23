@@ -42,7 +42,7 @@ services:
         depends_on: 
             - keycloak
         build:
-            dockerfile: Dockerfile.gateway
+            dockerfile: Dockerfile.dev.gateway
             context: .
             target: "${COMPOSE_TARGET}"
         environment:
@@ -74,7 +74,7 @@ services:
         depends_on:
             - gateway
         build:
-            dockerfile: Dockerfile.node
+            dockerfile: Dockerfile.dev.node
             context: .
             target: "${COMPOSE_TARGET}"
         environment:

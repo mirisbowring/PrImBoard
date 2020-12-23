@@ -39,19 +39,19 @@ var IPFSNodeProject = bson.M{
 }
 
 // AddIPFSNode checks if the passed node struct is valid and adds it to the user
-func (u *User) AddIPFSNode(ipfs IPFSNode) error {
-	// check if ipfs-node setting is valid
-	if err := ipfs.Valid(); err != nil {
-		return err
-	}
-	// check if setting exists
-	if u.Settings == nil {
-		u.Settings = new(Settings)
-	}
-	// append node
-	u.Settings.IPFSNodes = append(u.Settings.IPFSNodes, &ipfs)
-	return nil
-}
+// func (u *User) AddIPFSNode(ipfs IPFSNode) error {
+// 	// check if ipfs-node setting is valid
+// 	if err := ipfs.Valid(); err != nil {
+// 		return err
+// 	}
+// 	// check if setting exists
+// 	if u.Settings == nil {
+// 		u.Settings = new(Settings)
+// 	}
+// 	// append node
+// 	u.Settings.IPFSNodes = append(u.Settings.IPFSNodes, &ipfs)
+// 	return nil
+// }
 
 // Valid checks whether the ipfs-node settings is valid or not
 func (s *IPFSNode) Valid() error {
