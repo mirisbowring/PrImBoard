@@ -217,8 +217,22 @@ func (n *AppNode) uploadFile(w http.ResponseWriter, r *http.Request) {
 	// verify dir existance
 	path := n.getDataPath(m.Creator, pathTypeUser, false)
 	pathThumb := n.getDataPath(m.Creator, pathTypeUser, true)
-	_ = os.Mkdir(path, os.ModePerm)
-	_ = os.Mkdir(pathThumb, os.ModePerm)
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
+		log.WithFields(log.Fields{
+			"path":  path,
+			"error": err.Error(),
+		}).Error("could not create path")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not create path")
+		return
+	}
+	if err := os.MkdirAll(pathThumb, os.ModePerm); err != nil {
+		log.WithFields(log.Fields{
+			"path":  pathThumb,
+			"error": err.Error(),
+		}).Error("could not create thumbnail path")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not create thumbnail path")
+		return
+	}
 
 	// Create file
 	filepath := fmt.Sprintf("%s%s", path, fileHeader.Filename)
