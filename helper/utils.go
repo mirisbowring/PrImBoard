@@ -141,3 +141,13 @@ func UniqueStrings(slice []string) []string {
 	}
 	return list
 }
+
+// RemoveID removes a given value from a given slice
+func RemoveID(s []primitive.ObjectID, r primitive.ObjectID) []primitive.ObjectID {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
+}

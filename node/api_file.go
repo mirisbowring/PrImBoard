@@ -299,13 +299,29 @@ func (n *AppNode) uploadFile(w http.ResponseWriter, r *http.Request) {
 	// create reader from json bytes
 	body := bytes.NewReader(data)
 
-	log.Warn(string(data))
-
 	// refresh keycloaktoken in neccessary
 	n.keycloakRefreshToken()
 
 	// post media to gateway
-	_http.SendRequest(n.HTTPClient, http.MethodPost, n.Config.GatewayURL+"/api/v1/media", n.KeycloakToken.AccessToken, body, "application/json")
+	resp, status, msg := _http.SendRequest(n.HTTPClient, http.MethodPost, n.Config.GatewayURL+"/api/v1/media", n.KeycloakToken.AccessToken, body, "application/json")
+	if status > 0 {
+		_http.RespondWithError(w, http.StatusInternalServerError, msg)
+		return
+	}
+	logfields := log.Fields{
+		"media":       m,
+		"status-code": resp.StatusCode,
+	}
+	switch resp.StatusCode {
+	case http.StatusCreated:
+		log.WithFields(logfields).Debug("created media on gateway successfull")
+		_http.RespondWithJSON(w, http.StatusOK, "created media")
+		return
+	default:
+		log.WithFields(logfields).Error("unexpected status code")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not create media on gateway")
+		return
+	}
 
 	// file to specified node
 	// m, err = addMediaToNode(filename, m, n, g.HTTPClient)

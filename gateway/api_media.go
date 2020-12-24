@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/mirisbowring/primboard/helper"
 	_http "github.com/mirisbowring/primboard/helper/http"
 	"github.com/mirisbowring/primboard/models"
 	log "github.com/sirupsen/logrus"
@@ -328,7 +329,7 @@ func (g *AppGateway) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if failed := g.removeMediasFromNode([]models.Media{m}); len(failed) > 0 {
+	if failed := g.removeMediasFromNode([]models.Media{m}, primitive.NewObjectID()); len(failed) > 0 {
 		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially deleted files")
 		return
 	}
@@ -342,6 +343,56 @@ func (g *AppGateway) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 
 	// deletion successful
 	_http.RespondWithJSON(w, http.StatusOK, result)
+}
+
+func (g *AppGateway) deleteMediaByIDFromNode(w http.ResponseWriter, r *http.Request) {
+	// parse ID from route
+	id := parseID(w, r)
+	if id.IsZero() {
+		return
+	}
+
+	// parse nodeID from route
+	nodeID := parseIDCustomKey(w, r, "node")
+	if nodeID.IsZero() {
+		return
+	}
+
+	// create media model by passed id
+	m := models.Media{ID: id}
+	err := m.GetMedia(g.DB, g.GetUserPermissionW(w, true))
+	if err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not select media from database")
+		return
+	}
+
+	if failed := g.removeMediasFromNode([]models.Media{m}, nodeID); len(failed) > 0 {
+		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially deleted files")
+		return
+	}
+
+	// remove the node from slice
+	m.NodeIDs = helper.RemoveID(m.NodeIDs, nodeID)
+	// delete media if slice is empty
+	if len(m.NodeIDs) == 0 {
+		// try to delete model
+		_, err := m.DeleteMedia(g.DB)
+		if err != nil {
+			_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		_http.RespondWithJSON(w, http.StatusOK, "deleted media from node")
+		return
+	}
+
+	if err := m.Save(g.DB); err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// deletion successful
+	_http.RespondWithJSON(w, http.StatusOK, "deleted media from gateway")
+
 }
 
 // deleteMediaByIDs deletes multiple media documents from mongodb
@@ -367,7 +418,7 @@ func (g *AppGateway) deleteMediaByIDs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if failed := g.removeMediasFromNode(medias); len(failed) > 0 {
+	if failed := g.removeMediasFromNode(medias, primitive.NewObjectID()); len(failed) > 0 {
 		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially deleted files")
 		return
 	}

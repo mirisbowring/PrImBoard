@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/mirisbowring/primboard/helper"
 	_http "github.com/mirisbowring/primboard/helper/http"
@@ -228,7 +229,7 @@ func addMediaToNode(filePath string, m models.Media, node models.Node, client *h
 	}
 }
 
-func (g *AppGateway) removeMediasFromNode(medias []models.Media) map[string][]string {
+func (g *AppGateway) removeMediasFromNode(medias []models.Media, nodeID primitive.ObjectID) map[string][]string {
 	username := medias[0].Creator
 	nodes := make(map[string]models.Node)
 	requests := make(map[string][]string)
@@ -241,6 +242,10 @@ func (g *AppGateway) removeMediasFromNode(medias []models.Media) map[string][]st
 		}
 		// iterate over all nodes for that file
 		for _, node := range med.Nodes {
+			// check if deletion should happen for specific node only
+			if nodeID != primitive.NilObjectID && nodeID != node.ID {
+				continue
+			}
 			id := node.ID.Hex()
 			// check if a key for that node does already exist
 			if val, ok := requests[id]; ok {

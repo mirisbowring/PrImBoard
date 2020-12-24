@@ -12,8 +12,12 @@ import (
 // returns primitive.NilObjectID if an error occured
 // sends a respond if an error occured
 func parseID(w http.ResponseWriter, r *http.Request) primitive.ObjectID {
+	return parseIDCustomKey(w, r, "id")
+}
+
+func parseIDCustomKey(w http.ResponseWriter, r *http.Request, key string) primitive.ObjectID {
 	vars := mux.Vars(r)
-	id, err := primitive.ObjectIDFromHex(vars["id"])
+	id, err := primitive.ObjectIDFromHex(vars[key])
 	if err != nil {
 		_http.RespondWithError(w, http.StatusBadRequest, "Could not parse ID from route!")
 		return primitive.NilObjectID

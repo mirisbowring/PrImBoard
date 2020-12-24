@@ -32,6 +32,7 @@ func (g *AppGateway) initializeRoutes() {
 	g.Router.Handle("/api/v1/media/addgroups", g.Authenticate(http.HandlerFunc(g.MapGroupsToMedia), false)).Methods("POST")
 	g.Router.Handle("/api/v1/media/removegroups", g.Authenticate(http.HandlerFunc(g.removeGroupsFromMedia), false)).Methods("DELETE")
 	g.Router.Handle("/api/v1/media/{id}", g.Authenticate(http.HandlerFunc(g.DeleteMediaByID), false)).Methods("DELETE")
+	g.Router.Handle("/api/v1/media/{id}/{node}", g.Authenticate(http.HandlerFunc(g.deleteMediaByIDFromNode), false)).Methods("DELETE")
 	g.Router.Handle("/api/v1/media/{id}", g.Authenticate(http.HandlerFunc(g.GetMediaByID), false)).Methods("GET")
 	// a.Router.Handle("/api/v1/media/{id}", a.Authenticate(http.HandlerFunc(a.UpdateMediaByID), false)).Methods("PUT")
 	g.Router.Handle("/api/v1/media/{id}/comment", g.Authenticate(http.HandlerFunc(g.AddCommentByMediaID), false)).Methods("POST")
