@@ -322,6 +322,7 @@ func (g *AppGateway) GetUserPermission(username string, ownerOnly bool) bson.M {
 }
 
 // GetUserPermissionW parses the permissionfilter and returns it
+// it reads the username from passed response writer
 func (g *AppGateway) GetUserPermissionW(w http.ResponseWriter, ownerOnly bool) bson.M {
 	username := _http.GetUsernameFromHeader(w)
 	return g.GetUserPermission(username, ownerOnly)

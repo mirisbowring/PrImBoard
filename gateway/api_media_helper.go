@@ -390,8 +390,6 @@ func (g *AppGateway) prepareGroupMedia(w http.ResponseWriter, r *http.Request) (
 		return nil, 7
 	}
 
-	log.Info(_helper)
-
 	_helper.GroupIDs = nil
 	_helper.MediaIDs = nil
 	for _, med := range _helper.Medias {
@@ -400,8 +398,6 @@ func (g *AppGateway) prepareGroupMedia(w http.ResponseWriter, r *http.Request) (
 	for _, group := range _helper.Groups {
 		_helper.GroupIDs = append(_helper.GroupIDs, group.ID)
 	}
-
-	log.Info(_helper)
 
 	return &_helper, 0
 }
@@ -457,7 +453,6 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 				val.Filenames = append(val.Filenames, med.FileName)
 				requests[id] = val
 			} else {
-				log.Info(g.Nodes)
 				// add node to node map
 				nodes[id] = *(g.Nodes)[node.ID]
 				// create new key for node with groups to share with
@@ -471,7 +466,7 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 
 	// iterate over find nodes and post request
 	for id, node := range nodes {
-		endpoint := fmt.Sprintf("%s/api/v1/files/%s/share", node.APIEndpoint, username)
+		endpoint := fmt.Sprintf("%s/api/v1/files/%s/shares", node.APIEndpoint, username)
 		contentType := "application/json"
 
 		val, _ := requests[id]
@@ -498,7 +493,8 @@ func (g *AppGateway) shareMediaToGroup(medias []models.Media, groups []models.Us
 			res, status, msg = _http.SendRequest(g.HTTPClient, "POST", endpoint, g.KeycloakToken.AccessToken, body, contentType)
 			break
 		case "remove":
-			res, status, msg = _http.SendRequest(g.HTTPClient, "DELETE", endpoint, g.KeycloakToken.AccessToken, body, contentType)
+			endpoint = fmt.Sprintf("%s/remove", endpoint)
+			res, status, msg = _http.SendRequest(g.HTTPClient, "POST", endpoint, g.KeycloakToken.AccessToken, body, contentType)
 			break
 		default:
 			log.WithFields(logfields).Error("unknown action specified")

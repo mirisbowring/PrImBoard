@@ -77,6 +77,29 @@ var MediaProject = bson.M{
 	"nodes":  NodeProject,
 }
 
+//MediaProjectInternal is a bson representation of the $project aggregation for mongodb
+var MediaProjectInternal = bson.M{
+	"_id":             1,
+	"sha1":            1,
+	"filename":        1,
+	"filenameThumb":   1,
+	"title":           1,
+	"description":     1,
+	"comments":        1,
+	"creator":         1,
+	"events":          1,
+	"groupIDs":        1,
+	"timestamp":       1,
+	"timestampUpload": 1,
+	"url":             1,
+	"urlThumb":        1,
+	"type":            1,
+	"extension":       1,
+	"contentType":     1,
+	"tags":            1,
+	"nodes":           NodeProject,
+}
+
 // MediaListProject is a bson representaion of the $project aggregation for mongodb
 var MediaListProject = bson.M{
 	"_id":           1,
@@ -440,9 +463,14 @@ func GetAllMedia(db *mongo.Database) ([]Media, error) {
 }
 
 // GetMedia returns the specified entry from the mongodb
-func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
+// project represents the selection (defaults to MediaProject if nil)
+func (m *Media) GetMedia(db *mongo.Database, permission bson.M, project primitive.M) error {
 	if permission == nil {
 		return errors.New("no permissions specified")
+	}
+	// default project to MediaProject
+	if project == nil {
+		project = MediaProject
 	}
 	filter := bson.M{"$and": []bson.M{
 		{"_id": m.ID},
@@ -469,13 +497,8 @@ func (m *Media) GetMedia(db *mongo.Database, permission bson.M) error {
 			"foreignField": "_id",
 			"as":           "nodes",
 		}},
-		{"$project": MediaProject},
+		{"$project": project},
 	}
-	// append permission
-	// pipeline = append(pipeline, permission)
-	// pipe := []bson.M{
-	// 	bson.M{"$project"}
-	// }
 	opts := options.Aggregate()
 	conn := database.GetColCtx(MediaCollection, db, 30)
 	defer conn.Cancel()

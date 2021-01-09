@@ -85,12 +85,12 @@ func ParseBody(body io.ReadCloser, logfields log.Fields) (string, int) {
 	return string(bytes), 1
 }
 
-// ParsePrimitiveID parses the id from the route and returns it
+// ParsePathID parses the id from the route and returns it
 // returns primitive.NilObjectID if an error occured
 // sends a respond if an error occured
-func ParsePrimitiveID(w http.ResponseWriter, r *http.Request) primitive.ObjectID {
+func ParsePathID(w http.ResponseWriter, r *http.Request, identifier string) primitive.ObjectID {
 	vars := mux.Vars(r)
-	id, err := primitive.ObjectIDFromHex(vars["id"])
+	id, err := primitive.ObjectIDFromHex(vars[identifier])
 	if err != nil {
 		RespondWithError(w, http.StatusBadRequest, "Could not parse ID from route!")
 		return primitive.NilObjectID

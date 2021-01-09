@@ -79,7 +79,6 @@ services:
             target: "${COMPOSE_TARGET}"
         environment:
             - BASEPATH=/data
-            - TARGETPATH=/share
             - CA_CERT=/certs/ca-cert.pem
             - GATEWAY_URL=http://gateway:8765
             - KEYCLOAK_URL=https://10.101.1.8/keycloak
@@ -92,6 +91,4 @@ services:
             - NODE_AUTH_SECRET=sdfnsdfjhsduifhsdiufhsdiuofhjsdi
         volumes:
             - /Users/arlindne/primboard/node/data:/data:rw
-            - /Users/arlindne/primboard/node/share:/share:rw
             - /Users/arlindne/minica/myCert:/certs/ca-cert.pem
-            - /Users/arlindne/primboard/node/etc/nginx/locations:/etc/nginx/locations:rw

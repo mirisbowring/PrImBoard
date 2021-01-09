@@ -144,14 +144,21 @@ func CreateThumbnail(filepath string) io.Reader {
 // DeleteFile deletes the specified file for the specified user. It deletes all
 // local shares before.
 //
+// deletes share with group only if specified
+//
 // Does not write response if w == nil
 //
 // 0 -> ok || 1 -> could not delete shares || 2 -> could not delete files from
 // user dir
-func DeleteFile(basePath string, username string, filename string, w http.ResponseWriter) int {
+func DeleteFile(basePath string, username string, group string, filename string, w http.ResponseWriter) int {
 	// create map struct
 	groupPath := filepath.Join(basePath, "group")
-	tmp, _ := GetDirectories(groupPath)
+	// init tmp with group
+	tmp := []string{group}
+	// select all groups if not specified
+	if group == "" {
+		tmp, _ = GetDirectories(groupPath)
+	}
 	maps := maps.FilesGroupsMap{
 		Filenames: []string{filename},
 		Groups:    tmp,
@@ -166,6 +173,11 @@ func DeleteFile(basePath string, username string, filename string, w http.Respon
 			_http.RespondWithJSON(w, 902, _http.ErrorJSON{Error: msg, Payload: failed})
 		}
 		return 1
+	}
+
+	// return if group was specifed -> do not delete from user
+	if group != "" {
+		return 0
 	}
 
 	// prepare path
@@ -206,23 +218,23 @@ func DeleteShares(basePath string, username string, _maps maps.FilesGroupsMap, w
 	var failed []maps.FilesGroupsMap
 
 	for _, group := range _maps.Groups {
-		path := filepath.Join(groupPath, group)
+		gpath := filepath.Join(groupPath, group)
 		// check if group does exist on this node
-		if !helper.PathExists(path) {
+		if !helper.PathExists(gpath) {
 			failed = append(failed, maps.FilesGroupsMap{Groups: []string{group}})
 			continue
 		}
 		for _, file := range _maps.Filenames {
 			fail := maps.FilesGroupsMap{Groups: []string{group}}
 			// build path
-			path := filepath.Join(groupPath, file)
+			path := filepath.Join(gpath, file)
 			name, status := ParseThumbnailName(file)
 			if status > 0 {
 				fail.Filenames = append(fail.Filenames, file)
 				failed = append(failed, fail)
 				continue
 			}
-			pathThumb := filepath.Join(groupPath, "thumb", name)
+			pathThumb := filepath.Join(gpath, "thumb", name)
 			// delete file
 			if status, _ := RemoveFile(path); status > 0 {
 				fail.Filenames = append(fail.Filenames, file)
@@ -362,10 +374,6 @@ func LinkUser(basePath string, targetPath string, username string, token string)
 
 // ParseFileName parses the filename from hash, username and extension (thumb toggle)
 func ParseFileName(hash string, username string, thumbnail bool, extension string) string {
-	log.Info(hash)
-	log.Info(username)
-	log.Info(thumbnail)
-	log.Info(extension)
 	switch "" {
 	case hash:
 		return ""

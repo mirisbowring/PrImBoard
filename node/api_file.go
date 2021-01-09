@@ -11,6 +11,7 @@ import (
 	_http "github.com/mirisbowring/primboard/helper/http"
 	"github.com/mirisbowring/primboard/internal/handler"
 	"github.com/mirisbowring/primboard/models"
+	"github.com/mirisbowring/primboard/models/maps"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -73,7 +74,7 @@ func (n *AppNode) deleteFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// delete the files and all shares
-	if status = handler.DeleteFile(n.Config.BasePath, username, filename, w); status > 0 {
+	if status = handler.DeleteFile(n.Config.BasePath, username, "", filename, w); status > 0 {
 		return
 	}
 
@@ -98,7 +99,7 @@ func (n *AppNode) deleteFiles(w http.ResponseWriter, r *http.Request) {
 	var failed []string
 	// iterate over
 	for _, file := range files {
-		if status = handler.DeleteFile(n.Config.BasePath, username, file, nil); status > 0 {
+		if status = handler.DeleteFile(n.Config.BasePath, username, "", file, nil); status > 0 {
 			failed = append(failed, file)
 		}
 	}
@@ -110,6 +111,46 @@ func (n *AppNode) deleteFiles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_http.RespondWithJSON(w, http.StatusOK, "Deleted all files")
+}
+
+// deleteShareForGroup deletes the share of a file for the specific group
+func (n *AppNode) deleteShareForGroup(w http.ResponseWriter, r *http.Request) {
+	// parse username from url
+	username, status := _http.ParsePathString(w, r, "username")
+	if status > 0 {
+		return
+	}
+
+	// parse filename from url
+	filename, status := _http.ParsePathString(w, r, "filename")
+	if status > 0 {
+		return
+	}
+
+	// parse froup from url
+	group, status := _http.ParsePathString(w, r, "group")
+	if status > 0 {
+		return
+	}
+
+	// create map for deleting shares
+	maps := maps.FilesGroupsMap{
+		Filenames: []string{filename},
+		Groups:    []string{group},
+	}
+
+	// delete file for group
+	if failed := handler.DeleteShares(n.Config.BasePath, username, maps, w); len(failed) > 0 {
+		_http.RespondWithJSON(w, 901, _http.ErrorJSON{Error: "could not remove share for all files", Payload: maps})
+		return
+	}
+	// if status = handler.DeleteFile(n.Config.BasePath, username, group, filename, w); status > 0 {
+	// 	return
+	// }
+
+	// respond success
+	_http.RespondWithJSON(w, http.StatusNoContent, "deleted share for group")
+
 }
 
 func (n *AppNode) deleteShares(w http.ResponseWriter, r *http.Request) {

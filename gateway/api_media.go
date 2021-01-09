@@ -323,7 +323,7 @@ func (g *AppGateway) DeleteMediaByID(w http.ResponseWriter, r *http.Request) {
 
 	// create model by passed id
 	m := models.Media{ID: id}
-	err := m.GetMedia(g.DB, g.GetUserPermissionW(w, true))
+	err := m.GetMedia(g.DB, g.GetUserPermissionW(w, true), nil)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select media from database")
 		return
@@ -360,7 +360,7 @@ func (g *AppGateway) deleteMediaByIDFromNode(w http.ResponseWriter, r *http.Requ
 
 	// create media model by passed id
 	m := models.Media{ID: id}
-	err := m.GetMedia(g.DB, g.GetUserPermissionW(w, true))
+	err := m.GetMedia(g.DB, g.GetUserPermissionW(w, true), nil)
 	if err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not select media from database")
 		return
@@ -520,7 +520,7 @@ func (g *AppGateway) GetMediaByID(w http.ResponseWriter, r *http.Request) {
 	// }
 
 	// try to select media
-	if err := m.GetMedia(g.DB, g.GetUserPermissionW(w, false)); err != nil {
+	if err := m.GetMedia(g.DB, g.GetUserPermissionW(w, false), nil); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -662,11 +662,72 @@ func (g *AppGateway) MapTagsToMedia(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (g *AppGateway) removeGroupsFromMedia(w http.ResponseWriter, r *http.Request) {
+func (g *AppGateway) removeGroupFromMedia(w http.ResponseWriter, r *http.Request) {
+	// parse media id
+	id := _http.ParsePathID(w, r, "id")
+	if id.IsZero() {
+		_http.RespondWithError(w, http.StatusBadRequest, "could not decode media id from url")
+		return
+	}
+
+	// parse group id
+	gid := _http.ParsePathID(w, r, "group")
+	if gid.IsZero() {
+		_http.RespondWithError(w, http.StatusBadRequest, "could not decode group from url")
+		return
+	}
+
+	media := models.Media{ID: id}
+	group := models.UserGroup{ID: gid}
+
+	// select media
+	if err := media.GetMedia(g.DB, g.GetUserPermissionW(w, true), models.MediaProjectInternal); err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not select media from database")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not verify media")
+		return
+	}
+
+	// select group
+	if err := group.GetUserGroup(g.DB, g.GetUserPermissionW(w, false)); err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not select group from database")
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not verify group")
+		return
+	}
+
+	if failed := g.shareMediaToGroup([]models.Media{media}, []models.UserGroup{group}, "remove"); len(failed) > 0 {
+		_http.RespondWithError(w, http.StatusNotImplemented, "currently there is no mechanism to handle partially removed shares")
+		return
+	}
+
+	// remove the group from slice
+	media.GroupIDs = helper.RemoveID(media.GroupIDs, gid)
+
+	// update document
+	if err := media.Save(g.DB); err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not update document in database")
+		return
+	}
+
+	// select new document
+	if err := media.GetMedia(g.DB, g.GetUserPermissionW(w, false), nil); err != nil {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not select updated document")
+		return
+	}
+
+	_http.RespondWithJSON(w, http.StatusOK, media)
+
+}
+
+func (g *AppGateway) removeGroupsFromMedias(w http.ResponseWriter, r *http.Request) {
 	_helper, status := g.prepareGroupMedia(w, r)
 	if status > 0 {
 		return
 	}
+
 	if failed := g.shareMediaToGroup(_helper.Medias, _helper.Groups, "remove"); len(failed) > 0 {
 		_http.RespondWithError(w, http.StatusNotImplemented, "currently, there is no mechanism to handle partially removed shares")
 		return
@@ -769,8 +830,6 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 		_http.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}
-
-	log.Info(n)
 
 	// grep filemeta
 	meta := r.FormValue("filemeta")
