@@ -705,12 +705,19 @@ func (g *AppGateway) removeGroupFromMedia(w http.ResponseWriter, r *http.Request
 
 	// remove the group from slice
 	media.GroupIDs = helper.RemoveID(media.GroupIDs, gid)
+	log.Error(media.GroupIDs)
 
 	// update document
-	if err := media.Save(g.DB); err != nil {
+	if status := media.ManageGroupIDs(g.DB, "update"); status > 0 {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not update document in database")
 		return
 	}
+	// if err := media.Save(g.DB); err != nil {
+	// 	_http.RespondWithError(w, http.StatusInternalServerError, "could not update document in database")
+	// 	return
+	// }
+
+	log.Error(media.GroupIDs)
 
 	// select new document
 	if err := media.GetMedia(g.DB, g.GetUserPermissionW(w, false), nil); err != nil {

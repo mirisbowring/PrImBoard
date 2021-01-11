@@ -85,3 +85,23 @@ func CreatePermissionMatcher(permission bson.M, id primitive.ObjectID) (bson.M, 
 	}
 	return matcher, nil
 }
+
+// ManageField executs a specific bson on a filter
+// e.x.:
+// filter := bson.M{"_id": bson.M{"$eq": objID}}
+// value := bson.M{"$set": bson.M{"fieldint": 42}}
+//
+// 0 -> ok | 1 -> error when updating | 2 -> nothing modified in DB
+func ManageField(db *mongo.Database, collection string, filter *bson.M, value *bson.M) int {
+	conn := GetColCtx(collection, db, 30)
+	defer conn.Cancel()
+
+	res, err := conn.Col.UpdateOne(conn.Ctx, filter, value)
+	if err != nil {
+		return 1
+	}
+	if res.ModifiedCount == 0 {
+		return 2
+	}
+	return 0
+}

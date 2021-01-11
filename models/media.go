@@ -581,6 +581,27 @@ func (m *Media) Save(db *mongo.Database) error {
 	return nil
 }
 
+// ManageGroupIDs executes an operation on the groupIDs field of this document
+// allowed operators:
+// - update
+// status:
+// -1 -> unknown operator passed
+// 0 -> ok
+// 1 -> error during operation
+// 2 -> nothing has been modified on the database
+func (m *Media) ManageGroupIDs(db *mongo.Database, operator string) int {
+	status := -1
+
+	switch operator {
+	case "update":
+		filter := bson.M{"_id": m.ID}
+		value := bson.M{"$set": bson.M{"groupIDs": m.GroupIDs}}
+		status = database.ManageField(db, MediaCollection, &filter, &value)
+	}
+
+	return status
+}
+
 // UpdateMedia updates the record with the passed one
 // Does NOT call the checkComments Method
 func (m *Media) UpdateMedia(db *mongo.Database, um Media) error {
