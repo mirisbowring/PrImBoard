@@ -81,6 +81,19 @@ func ObjectIDIntersect(a []primitive.ObjectID, b []primitive.ObjectID) bool {
 	return false
 }
 
+// ParsePrimitiveID parses a given string hex to a primitive object id
+func ParsePrimitiveID(hex string) primitive.ObjectID {
+	id, err := primitive.ObjectIDFromHex(hex)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"id":    hex,
+			"error": err.Error(),
+		}).Error("could not parse hex to object id")
+		return primitive.NilObjectID
+	}
+	return id
+}
+
 // ReadContent reads the content from a reader into a byte array
 func ReadContent(reader io.Reader) ([]byte, error) {
 	content, err := ioutil.ReadAll(reader)

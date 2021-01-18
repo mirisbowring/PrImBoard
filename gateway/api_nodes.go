@@ -86,13 +86,13 @@ func (g *AppGateway) AddNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// try to insert model into db
-	result, err := e.AddNode(g.DB)
-	if err != nil {
-		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
+	id := e.AddNode(g.DB)
+	if id.IsZero() {
+		_http.RespondWithError(w, http.StatusInternalServerError, "could not create node")
 		return
 	}
 	// creation successful
-	_http.RespondWithJSON(w, http.StatusCreated, result)
+	_http.RespondWithJSON(w, http.StatusCreated, id)
 }
 
 // DeleteNodeByID handles the webrequest for Node deletion
@@ -102,7 +102,7 @@ func (g *AppGateway) DeleteNodeByID(w http.ResponseWriter, r *http.Request) {
 	id, _ := primitive.ObjectIDFromHex(vars["id"])
 	// create model by passed id
 	e := models.Node{ID: id}
-	if err := e.GetNode(g.DB, g.GetUserPermissionW(w, true), false); err != nil {
+	if err := e.GetNode(g.DB, g.GetUserPermissionW(w, true), models.NodeProject); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, "could not verify node id")
 		return
 	}
@@ -139,7 +139,7 @@ func (g *AppGateway) GetNodeByID(w http.ResponseWriter, r *http.Request) {
 	// create model by passed id
 	e := models.Node{ID: id}
 	// try to select user
-	if err := e.GetNode(g.DB, g.GetUserPermissionW(w, false), false); err != nil {
+	if err := e.GetNode(g.DB, g.GetUserPermissionW(w, false), models.NodeProject); err != nil {
 		switch err {
 		case mongo.ErrNoDocuments:
 			// model not found
@@ -181,7 +181,7 @@ func (g *AppGateway) UpdateNodeByID(w http.ResponseWriter, r *http.Request) {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err = e.GetNode(g.DB, g.GetUserPermissionW(w, false), false); err != nil {
+	if err = e.GetNode(g.DB, g.GetUserPermissionW(w, false), models.NodeProject); err != nil {
 		_http.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

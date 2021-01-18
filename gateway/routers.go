@@ -80,6 +80,10 @@ func (g *AppGateway) initializeRoutes() {
 	g.Router.Handle("/api/v1/usergroup/{id}/users", g.Authenticate(http.HandlerFunc(g.AddUsersToUserGroupByID), false)).Methods("POST")
 	// infrastructure
 	g.Router.Handle("/api/v2/infrastructure/node/authenticate", g.Authenticate(http.HandlerFunc(g.authenticateNode), false)).Methods("POST")
+	g.Router.Handle("/api/v2/infrastructure/node/register", g.Authenticate(http.HandlerFunc(g.registerNode), false)).Methods("GET")
+	g.Router.Handle("/api/v2/infrastructure/node/{id}/secret", g.Authenticate(http.HandlerFunc(g.retrieveNodeSecret), false)).Methods("GET")
+	g.Router.Handle("/api/v2/infrastructure/node/{id}/secret/refresh", g.Authenticate(http.HandlerFunc(g.refreshNodeSecret), false)).Methods("GET").Queries("return", "{return}")
+	g.Router.Handle("/api/v2/infrastructure/node/{id}/structure", g.Authenticate(http.HandlerFunc(g.parseNodeStructure), false)).Methods("GET").Queries("page", "{page}", "size", "{size}")
 }
 
 // Index controller

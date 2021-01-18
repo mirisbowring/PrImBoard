@@ -19,6 +19,7 @@ type Node struct {
 	Title        string               `json:"title,omitempty" bson:"title,omitempty"`
 	Creator      string               `json:"creator,omitempty" bson:"creator,omitempty"`
 	GroupIDs     []primitive.ObjectID `json:"groupIDs,omitempty" bson:"groupIDs,omitempty"`
+	KeycloakID   string               `json:"keycloakID,omitempty" bson:"keycloakID,omitempty"`
 	Type         string               `json:"type,omitempty" bson:"type,omitempty"`
 	Secret       string               `json:"secret,omitempty" bson:"secret,omitempty"`
 	APIEndpoint  string               `json:"APIEndpoint,omitempty" bson:"APIEndpoint,omitempty"`
@@ -45,11 +46,18 @@ var NodeProjectInternal = bson.M{
 	"_id":          1,
 	"title":        1,
 	"creator":      1,
+	"keycloakID":   1,
 	"groupIDs":     1,
 	"type":         1,
 	"APIEndpoint":  1,
 	"dataEndpoint": 1,
 	"users":        1,
+}
+
+// NodeProjectSecret is bson representation of the node to retrieve the secret
+var NodeProjectSecret = bson.M{
+	"_id":    1,
+	"secret": 1,
 }
 
 var NodeProjectUserReduction = bson.M{
@@ -95,11 +103,18 @@ var NodeProjectAuthentication = bson.M{
 var NodeCollection = "node"
 
 // AddNode creates the model in the mongodb
-func (n *Node) AddNode(db *mongo.Database) (*mongo.InsertOneResult, error) {
+func (n *Node) AddNode(db *mongo.Database) primitive.ObjectID {
 	conn := database.GetColCtx(NodeCollection, db, 30)
-	result, err := conn.Col.InsertOne(conn.Ctx, n)
 	defer conn.Cancel()
-	return result, err
+	result, err := conn.Col.InsertOne(conn.Ctx, n)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not add new node to database")
+		return primitive.NilObjectID
+	}
+
+	return result.InsertedID.(primitive.ObjectID)
 }
 
 // AddUserGroups adds an array of primitive.ObjectID (of a usergroup) to the
@@ -209,16 +224,14 @@ func GetAllNodes(db *mongo.Database, permission bson.M, mode string) ([]Node, er
 }
 
 // GetNode returns the specified entry from the mongodb
-func (n *Node) GetNode(db *mongo.Database, permission bson.M, internal bool) error {
+// project -> estimated result representation
+func (n *Node) GetNode(db *mongo.Database, permission bson.M, project primitive.M) error {
 	// create pipeline
 	var pipeline []primitive.M
 	var err error
-	// the internal project contains the groupIDs
-	if internal {
-		pipeline, err = database.CreatePermissionProjectPipeline(permission, n.ID, NodeProjectInternal)
-	} else {
-		pipeline, err = database.CreatePermissionProjectPipeline(permission, n.ID, NodeProject)
-	}
+	// create pipeline
+	pipeline, err = database.CreatePermissionProjectPipeline(permission, n.ID, project)
+
 	// error handling
 	if err != nil {
 		return err
@@ -294,18 +307,91 @@ func (n *Node) GetUser(db *mongo.Database) ([]string, int) {
 	return tmp.Users, 0
 }
 
+// Replace replaces the corresponding document in the database with the current state
+// 0 -> ok | 1 -> error during find and update
+func (n *Node) Replace(db *mongo.Database) int {
+	conn := database.GetColCtx(NodeCollection, db, 30)
+	filter := bson.M{"_id": n.ID}
+	update := bson.M{"$set": n}
+	// options to return the update document
+	after := options.After
+	upsert := true
+	options := options.FindOneAndUpdateOptions{
+		ReturnDocument: &after,
+		Upsert:         &upsert,
+	}
+	// Execute query
+	err := conn.Col.FindOneAndUpdate(conn.Ctx, filter, update, &options).Decode(&n)
+	defer conn.Cancel()
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not find and update node")
+		return 1
+	}
+	return 0
+}
+
+// UpdateNodeSecret updates the secret entry of a document
+// 0 -> ok
+// 1 -> nothing has been changed
+// 2 -> update failed
+// 3 -> id is zero
+// 4 -> permission could not be verified
+func (n *Node) UpdateNodeSecret(db *mongo.Database, permission bson.M, secret string) int {
+	// verify that user has permission
+	if err := n.GetNode(db, permission, NodeProject); err != nil {
+		log.WithFields(log.Fields{
+			"method": "updateNodeSecret",
+			"error":  err.Error(),
+		}).Error("failed to check permission")
+		return 4
+	}
+	update := bson.M{"secret": secret}
+	return n.updateNodeField(db, update)
+}
+
+// updateNodeField takes an update bson, inserts it into a $set and updates the
+// current node !!! CHECK PERMISSIONS FIRST !!!
+// 0 -> ok
+// 1 -> nothing has been changed
+// 2 -> update failed
+// 3 -> id is zero
+func (n *Node) updateNodeField(db *mongo.Database, update bson.M) int {
+	if n.ID.IsZero() {
+		log.Warn("trying to update on invalid node")
+		return 3
+	}
+	conn := database.GetColCtx(NodeCollection, db, 30)
+	defer conn.Cancel()
+	filter := bson.M{"_id": n.ID}
+	update = bson.M{"$set": update}
+	result, err := conn.Col.UpdateOne(conn.Ctx, filter, update)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"error": err.Error(),
+		}).Error("could not update field")
+		return 2
+	}
+	if result.ModifiedCount == 0 {
+		log.Debug("no field has been changed")
+		return 1
+	}
+	return 0
+}
+
 // UpdateNode updates the record with the passed one
 func (n *Node) UpdateNode(db *mongo.Database, ue Node, permission bson.M) (*mongo.UpdateResult, error) {
 	// check if user is allowed to select this node
-	if err := n.GetNode(db, permission, false); err != nil {
+	if err := n.GetNode(db, permission, NodeProject); err != nil {
 		return nil, err
 	}
 	// continue with update
 	conn := database.GetColCtx(NodeCollection, db, 30)
+	defer conn.Cancel()
 	filter := bson.M{"_id": n.ID}
 	update := bson.M{"$set": ue}
 	result, err := conn.Col.UpdateOne(conn.Ctx, filter, update)
-	defer conn.Cancel()
 	return result, err
 }
 
@@ -321,9 +407,9 @@ func (n *Node) VerifyNode(db *mongo.Database, permission bson.M) error {
 	if n.Creator == "" {
 		return errors.New("creator must be specified")
 	}
-	if n.DataEndpoint == "" {
-		return errors.New("url is not valid")
-	}
+	// if n.DataEndpoint == "" {
+	// 	return errors.New("url is not valid")
+	// }
 	if len(n.GroupIDs) > 0 {
 		// select the specified groups
 		groups, err := GetUserGroupsByIDs(db, n.GroupIDs, permission)

@@ -826,7 +826,7 @@ func (g *AppGateway) UploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// verfiy node
-	if err := n.GetNode(g.DB, g.GetUserPermissionW(w, false), false); err != nil {
+	if err := n.GetNode(g.DB, g.GetUserPermissionW(w, false), models.NodeProject); err != nil {
 		_http.RespondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}

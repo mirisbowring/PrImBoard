@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/mirisbowring/primboard/helper"
 	_http "github.com/mirisbowring/primboard/helper/http"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -17,10 +18,9 @@ func parseID(w http.ResponseWriter, r *http.Request) primitive.ObjectID {
 
 func parseIDCustomKey(w http.ResponseWriter, r *http.Request, key string) primitive.ObjectID {
 	vars := mux.Vars(r)
-	id, err := primitive.ObjectIDFromHex(vars[key])
-	if err != nil {
+	id := helper.ParsePrimitiveID(vars[key])
+	if id.IsZero() {
 		_http.RespondWithError(w, http.StatusBadRequest, "Could not parse ID from route!")
-		return primitive.NilObjectID
 	}
 	return id
 }

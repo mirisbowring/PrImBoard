@@ -232,6 +232,7 @@ func (g *AppGateway) keycloakTokenActive(token string) bool {
 	return *rptResult.Active
 }
 
+// keycloakRefreshToken refreshes the clients access token
 func (g *AppGateway) keycloakRefreshToken() {
 	// no need to refresh if vaid
 	if g.keycloakTokenActive(g.KeycloakToken.AccessToken) {
